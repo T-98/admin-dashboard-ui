@@ -18,3 +18,5 @@ export async function userFetcher(params: SearchParams, pageParam: any) {
     );
     return res.data;
 };
+
+export type { PaginatedResponse, SearchParams };

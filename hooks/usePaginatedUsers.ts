@@ -1,8 +1,4 @@
 // hooks/usePaginatedUsers.ts
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { userFetcher} from "./user-fetcher";
-
-
 export interface Org {
   orgId: number;
   name: string;
@@ -32,6 +28,7 @@ export interface SearchParams {
   sortBy?: string;
   order?: "asc" | "desc";
   take?: number;
+  filterBy?: string;
 }
 
 export interface PaginatedResponse {
@@ -39,14 +36,4 @@ export interface PaginatedResponse {
   nextCursor: string | null;
   hasMore: boolean;
   total: number;
-}
-
-export function usePaginatedUsers(params: SearchParams) {
-  return useInfiniteQuery<PaginatedResponse>({
-    queryKey: ["users", params],
-    queryFn: ({ pageParam = null }) => userFetcher(params, pageParam),
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.nextCursor : undefined,
-    initialPageParam: null,
-  });
 }
