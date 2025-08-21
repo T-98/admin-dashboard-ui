@@ -1,4 +1,5 @@
 // app/users/page.tsx
+import { Suspense } from "react";
 import UserListContainer from "@/components/UserListContainer";
 import { normalizeSearchParams } from "@/lib/normalizeSearchParams";
 import { searchUsersServer } from "@/lib/server/searchUsers";
@@ -29,15 +30,15 @@ export default async function UsersPage({
   return (
     <main className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">User Directory</h1>
-      <UserListContainer
-        q={params.q}
-        sortBy={params.sortBy}
-        order={params.order}
-        take={params.take}
-        filterBy={params.filterBy}
-        // if you want to seed the first page, add:
-        // initialPage={initialPage}
-      />
+      <Suspense fallback={<div>Loading users...</div>}>
+        <UserListContainer
+          q={params.q}
+          sortBy={params.sortBy}
+          order={params.order}
+          take={params.take}
+          filterBy={params.filterBy}
+        />
+      </Suspense>
     </main>
   );
 }
