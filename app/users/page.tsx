@@ -28,7 +28,7 @@ export default async function UsersPage({
   const initialPage = await searchUsersServer(params);
 
   return (
-    <main className="max-w-4xl mx-auto p-6">
+    <main className="max-w-full mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">User Directory</h1>
       <Suspense fallback={<div>Loading users...</div>}>
         <UserListContainer
