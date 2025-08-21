@@ -1,6 +1,13 @@
 // components/UserListView.tsx
 import React from "react";
 import type { User } from "@/hooks/usePaginatedUsers";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
 
 interface Props {
   users: User[];
@@ -30,6 +37,7 @@ export default function UserListView({
   // Note: shown is now computed in the container; keeping UI simple is fine too.
   // If you prefer to keep it here, pass `shown` as a prop.
   const approxShown = Math.min((pageIndex + 1) * take, total);
+  const canPrev = pageIndex > 0;
   const disableNext = !hasNext || isFetchingNextPage;
 
   return (
@@ -75,36 +83,66 @@ export default function UserListView({
       {/* Pagination controls */}
 
       <div className="mt-6 flex justify-between items-center">
-        <button
-          onClick={onPrevious}
-          disabled={pageIndex === 0}
-          className="px-4 py-2 bg-gray-300 text-black rounded disabled:opacity-50"
-        >
-          Previous
-        </button>
+        <Pagination>
+          <PaginationContent className="gap-2">
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                aria-disabled={!canPrev}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (canPrev) onPrevious();
+                }}
+                className={!canPrev ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
 
-        <span className="text-sm text-gray-500">
-          Showing {approxShown} of {total}
-        </span>
+            <PaginationItem
+              // No pointer events—this is informational, not a link
+              className="pointer-events-none select-none px-2"
+            >
+              <span
+                className="text-sm text-muted-foreground"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                Showing {approxShown} of {total}
+              </span>
+            </PaginationItem>
 
-        <button
-          onClick={onNext}
-          disabled={disableNext}
-          aria-busy={isFetchingNextPage || undefined}
-          className={[
-            "px-4 py-2 rounded text-white inline-flex items-center gap-2",
-            "bg-blue-600 disabled:opacity-50",
-            isFetchingNextPage ? "opacity-100 cursor-wait" : "", // override fade while fetching
-          ].join(" ")}
-        >
-          <span>Next</span>
-          {isFetchingNextPage && (
-            <span
-              className="inline-block h-3 w-3 rounded-full border-2 border-white/80 border-t-transparent animate-spin"
-              aria-hidden="true"
-            />
-          )}
-        </button>
+            {/* Next (native shadcn + spinner via pseudo-element) */}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                aria-disabled={disableNext || undefined}
+                aria-busy={isFetchingNextPage || undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!disableNext) onNext();
+                }}
+                className={[
+                  // add right padding to make space for spinner
+                  "relative pr-6",
+                  // block interaction when not allowed
+                  disableNext ? "pointer-events-none opacity-50" : "",
+                  // when fetching: hide the built-in chevron SVG and draw a spinner in its place
+                  isFetchingNextPage
+                    ? [
+                        // hide the trailing <svg> chevron but keep its space
+                        "[&>svg]:invisible",
+                        // spinner pseudo-element at the same spot
+                        "after:content-[''] after:absolute after:right-4",
+                        "after:top-1/2 after:-translate-y-1/2",
+                        "after:h-3 after:w-3 after:rounded-full",
+                        "after:border-2 after:border-current after:border-t-transparent",
+                        "after:animate-spin",
+                      ].join(" ")
+                    : "",
+                ].join(" ")}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
     </div>
   );
