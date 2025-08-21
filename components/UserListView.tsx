@@ -27,9 +27,6 @@ export default function UserListView({
   hasNext,
   isFetchingNextPage,
 }: Props) {
-  if (isLoading) return <div>Loading users...</div>;
-  if (error) return <div>Error loading users.</div>;
-
   // Note: shown is now computed in the container; keeping UI simple is fine too.
   // If you prefer to keep it here, pass `shown` as a prop.
   const approxShown = Math.min((pageIndex + 1) * take, total);
@@ -37,38 +34,45 @@ export default function UserListView({
 
   return (
     <div>
-      <ul className="space-y-4">
-        {users.map((user) => (
-          // Stable keys from data — best practice
-          <li key={user.id} className="p-4 border rounded shadow-sm">
-            <div className="font-semibold">{user.name}</div>
-            <div className="text-sm text-gray-600">{user.email}</div>
+      {!isLoading && !error && (
+        <ul className="space-y-4">
+          {users.map((user) => (
+            // Stable keys from data — best practice
+            <li key={user.id} className="p-4 border rounded shadow-sm">
+              <div className="font-semibold">{user.name}</div>
+              <div className="text-sm text-gray-600">{user.email}</div>
 
-            <div className="mt-2">
-              <p className="font-medium text-sm">Orgs:</p>
-              <ul className="ml-4 list-disc text-sm text-gray-700">
-                {user.orgs.map((org) => (
-                  <li key={`${user.id}-${org.orgId}`}>
-                    {org.name} — <span className="italic">{org.role}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+              <div className="mt-2">
+                <p className="font-medium text-sm">Orgs:</p>
+                <ul className="ml-4 list-disc text-sm text-gray-700">
+                  {user.orgs.map((org) => (
+                    <li key={`${user.id}-${org.orgId}`}>
+                      {org.name} — <span className="italic">{org.role}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-            <div className="mt-2">
-              <p className="font-medium text-sm">Teams:</p>
-              <ul className="ml-4 list-disc text-sm text-gray-700">
-                {user.teams.map((team) => (
-                  <li key={`${user.id}-${team.teamId}`}>
-                    {team.name} — <span className="italic">{team.role}</span>{" "}
-                    (Org #{team.orgId})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </li>
-        ))}
-      </ul>
+              <div className="mt-2">
+                <p className="font-medium text-sm">Teams:</p>
+                <ul className="ml-4 list-disc text-sm text-gray-700">
+                  {user.teams.map((team) => (
+                    <li key={`${user.id}-${team.teamId}`}>
+                      {team.name} — <span className="italic">{team.role}</span>{" "}
+                      (Org #{team.orgId})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {isLoading && <div>Loading users...</div>}
+      {error && <div className="text-red-600">Error: {error.message}</div>}
+
+      {/* Pagination controls */}
 
       <div className="mt-6 flex justify-between items-center">
         <button
@@ -80,7 +84,6 @@ export default function UserListView({
         </button>
 
         <span className="text-sm text-gray-500">
-          {/* If you want exact "shown", pass it down from container instead of approxShown */}
           Showing {approxShown} of {total}
         </span>
 
