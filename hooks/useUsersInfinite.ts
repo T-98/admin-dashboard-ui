@@ -19,7 +19,8 @@ export function useUsersInfinite(params: SearchParams) {
 
   return useSuspenseInfiniteQuery<PaginatedResponse, Error>({
     queryKey: ["users", keyParams],
-    queryFn: ({ pageParam = null }) => userFetcher(keyParams, pageParam),
+    queryFn: ({ pageParam = null }: { pageParam?: unknown }) =>
+      userFetcher(keyParams, pageParam as string | null), // React Query provides pageParam as unknown, cast to expected type
     initialPageParam: null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     // We don't have a prev cursor from the API; we just move the local index back.
