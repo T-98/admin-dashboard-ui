@@ -8,7 +8,16 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
-
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { SelectScrollable } from "./SelectScrollable";
 interface Props {
   users: User[];
   total: number;
@@ -43,38 +52,61 @@ export default function UserListView({
   return (
     <div>
       {!isLoading && !error && (
-        <ul className="space-y-4">
-          {users.map((user) => (
-            // Stable keys from data — best practice
-            <li key={user.id} className="p-4 border rounded shadow-sm">
-              <div className="font-semibold">{user.name}</div>
-              <div className="text-sm text-gray-600">{user.email}</div>
+        // <ul className="space-y-4">
+        //   {users.map((user) => (
+        //     // Stable keys from data — best practice
+        //     <li key={user.id} className="p-4 border rounded shadow-sm">
+        //       <div className="font-semibold">{user.name}</div>
+        //       <div className="text-sm text-gray-600">{user.email}</div>
 
-              <div className="mt-2">
-                <p className="font-medium text-sm">Orgs:</p>
-                <ul className="ml-4 list-disc text-sm text-gray-700">
-                  {user.orgs.map((org) => (
-                    <li key={`${user.id}-${org.orgId}`}>
-                      {org.name} — <span className="italic">{org.role}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+        //       <div className="mt-2">
+        //         <p className="font-medium text-sm">Orgs:</p>
+        //         <ul className="ml-4 list-disc text-sm text-gray-700">
+        //           {user.orgs.map((org) => (
+        //             <li key={`${user.id}-${org.orgId}`}>
+        //               {org.name} — <span className="italic">{org.role}</span>
+        //             </li>
+        //           ))}
+        //         </ul>
+        //       </div>
 
-              <div className="mt-2">
-                <p className="font-medium text-sm">Teams:</p>
-                <ul className="ml-4 list-disc text-sm text-gray-700">
-                  {user.teams.map((team) => (
-                    <li key={`${user.id}-${team.teamId}`}>
-                      {team.name} — <span className="italic">{team.role}</span>{" "}
-                      (Org #{team.orgId})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </li>
-          ))}
-        </ul>
+        //       <div className="mt-2">
+        //         <p className="font-medium text-sm">Teams:</p>
+        //         <ul className="ml-4 list-disc text-sm text-gray-700">
+        //           {user.teams.map((team) => (
+        //             <li key={`${user.id}-${team.teamId}`}>
+        //               {team.name} — <span className="italic">{team.role}</span>{" "}
+        //               (Org #{team.orgId})
+        //             </li>
+        //           ))}
+        //         </ul>
+        //       </div>
+        //     </li>
+        //   ))}
+        // </ul>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Organization</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className="text-right">Invite Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  {/* <SelectScrollable props={user.orgs} /> */}
+                </TableCell>
+                <TableCell className="text-right">$250.00</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {isLoading && <div>Loading users...</div>}
