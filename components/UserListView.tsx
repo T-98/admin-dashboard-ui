@@ -1,6 +1,7 @@
 // components/UserListView.tsx
 import { useEffect, useState, useCallback } from "react";
 import type { User } from "@/hooks/usePaginatedUsers";
+import type { ColumnId } from "@/components/SearchBar";
 import {
   Pagination,
   PaginationContent,
@@ -17,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { SelectScrollable } from "./SelectScrollable";
 import { MoreVertical } from "lucide-react";
 
@@ -31,6 +33,7 @@ interface Props {
   onPrevious: () => void;
   hasNext: boolean;
   isFetchingNextPage: boolean;
+  extraColumns?: ColumnId[]; // NEW
 }
 
 export default function UserListView({
@@ -44,17 +47,16 @@ export default function UserListView({
   onPrevious,
   hasNext,
   isFetchingNextPage,
+  extraColumns = [], // NEW
 }: Props) {
   const approxShown = Math.min((pageIndex + 1) * take, total);
   const canPrev = pageIndex > 0;
   const disableNext = !hasNext || isFetchingNextPage;
 
-  // ✅ Single state object for selections: { [userId]: orgId | null }
   const [selectedByUser, setSelectedByUser] = useState<
     Record<number, number | null>
   >({});
 
-  // ✅ Reset to topmost org whenever the *list of users for this page* changes
   useEffect(() => {
     const next: Record<number, number | null> = {};
     for (const u of users) {
@@ -65,67 +67,78 @@ export default function UserListView({
 
   const handleSelectOrg = useCallback(
     (userId: number, orgId: number | null) => {
-      setSelectedByUser((prev) => {
-        if (prev[userId] === orgId) return prev;
-        return { ...prev, [userId]: orgId };
-      });
+      setSelectedByUser((prev) =>
+        prev[userId] === orgId ? prev : { ...prev, [userId]: orgId }
+      );
     },
     []
   );
 
+  if (isLoading) return <div>Loading users...</div>;
+  if (error) return <div className="text-red-600">Error: {error.message}</div>;
+
   return (
     <div className="w-full">
-      {!isLoading && !error && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[220px]">Name</TableHead>
-              <TableHead className="w-[260px]">Email</TableHead>
-              <TableHead className="w-[280px]">Organization</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead className="text-center">Invite Status</TableHead>
-            </TableRow>
-          </TableHeader>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[220px]">Name</TableHead>
+            <TableHead className="w-[260px]">Email</TableHead>
+            <TableHead className="w-[280px]">Organization</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead className="text-center">Invite Status</TableHead>
 
-          <TableBody>
-            {users.map((user) => {
-              // Default to the topmost org for this row
-              const selectedOrgId =
-                selectedByUser[user.id] ?? user.orgs[0]?.orgId ?? null;
-              const selectedOrg =
-                user.orgs.find((o) => o.orgId === selectedOrgId) ??
-                user.orgs[0] ??
-                null;
-              const roleLabel = selectedOrg?.role ?? "—";
-              return (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell className="truncate">{user.email}</TableCell>
-                  <TableCell>
-                    <SelectScrollable
-                      orgs={user.orgs}
-                      value={selectedOrgId}
-                      onChange={(orgId) => handleSelectOrg(user.id, orgId)}
-                      placeholder="Select organization"
-                      className="w-[260px] cursor-pointer"
-                    />
-                  </TableCell>
-                  <TableCell>{roleLabel}</TableCell>
-                  <TableCell className="text-center">—</TableCell>
-                  <TableCell className="text-center">
-                    <Button variant="outline" className="cursor-pointer">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
+            {/* NEW: optional headers */}
+            {extraColumns.includes("team") && (
+              <TableHead className="w-[280px]">Team</TableHead>
+            )}
+            {extraColumns.includes("teamRole") && (
+              <TableHead>Team Role</TableHead>
+            )}
+            {extraColumns.includes("teamInviteStatus") && (
+              <TableHead className="text-center">Team Invite Status</TableHead>
+            )}
+          </TableRow>
+        </TableHeader>
 
-      {isLoading && <div>Loading users...</div>}
-      {error && <div className="text-red-600">Error: {error.message}</div>}
+        {/* Body unchanged for now */}
+        <TableBody>
+          {users.map((user) => {
+            const selectedOrgId =
+              selectedByUser[user.id] ?? user.orgs[0]?.orgId ?? null;
+            const selectedOrg =
+              user.orgs.find((o) => o.orgId === selectedOrgId) ??
+              user.orgs[0] ??
+              null;
+            const roleLabel = selectedOrg?.role ?? "—";
+
+            return (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell className="truncate">{user.email}</TableCell>
+                <TableCell>
+                  <SelectScrollable
+                    orgs={user.orgs}
+                    value={selectedOrgId}
+                    onChange={(orgId) => handleSelectOrg(user.id, orgId)}
+                    placeholder="Select organization"
+                    className="w-[260px] cursor-pointer"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{roleLabel}</Badge>
+                </TableCell>
+                <TableCell className="text-center">—</TableCell>
+                <TableCell className="text-center">
+                  <Button variant="outline" className="cursor-pointer">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
 
       {/* Pagination controls */}
       <div className="mt-6 flex justify-between items-center">

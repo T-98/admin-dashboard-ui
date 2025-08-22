@@ -13,27 +13,28 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
 // Stable options: ids are used for state, labels for UI
-const COLUMN_OPTIONS = [
+export const COLUMN_OPTIONS = [
   { id: "team", label: "Team" },
   { id: "teamRole", label: "Team Role" },
   { id: "teamInviteStatus", label: "Team Invite Status" },
 ] as const;
 
-type ColumnId = (typeof COLUMN_OPTIONS)[number]["id"];
+export type ColumnId = (typeof COLUMN_OPTIONS)[number]["id"];
 
-export default function SearchBar() {
-  const [selected, setSelected] = useState<Set<ColumnId>>(
-    () => new Set<ColumnId>() // start empty; prefill if you want defaults
+type Props = {
+  selected: Set<ColumnId>;
+  onChange: (next: Set<ColumnId>) => void;
+};
+
+export default function SearchBar({ selected, onChange }: Props) {
+  const toggle = useCallback(
+    (id: ColumnId, next: boolean) => {
+      const s = new Set(selected);
+      next ? s.add(id) : s.delete(id);
+      onChange(s);
+    },
+    [selected, onChange]
   );
-
-  const toggle = useCallback((id: ColumnId, next: boolean) => {
-    setSelected((prev) => {
-      const nextSet = new Set(prev);
-      if (next) nextSet.add(id);
-      else nextSet.delete(id);
-      return nextSet;
-    });
-  }, []);
 
   // Optional: show a count on the trigger (nice affordance)
   const selectedCount = selected.size;

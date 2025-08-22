@@ -1,8 +1,5 @@
-// app/users/page.tsx
-import { Suspense } from "react";
-import UserListContainer from "@/components/UserListContainer";
 import { normalizeSearchParams } from "@/lib/normalizeSearchParams";
-import SearchBar from "@/components/SearchBar";
+import UsersClient from "@/components/UsersClient";
 
 export const dynamic = "force-dynamic";
 
@@ -29,16 +26,13 @@ export default async function UsersPage({
   return (
     <main className="max-w-full mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">User Directory</h1>
-      <SearchBar />
-      <Suspense fallback={<div>Loading users...</div>}>
-        <UserListContainer
-          q={params.q}
-          sortBy={params.sortBy}
-          order={params.order}
-          take={params.take}
-          filterBy={params.filterBy}
-        />
-      </Suspense>
+      <UsersClient
+        q={params.q}
+        sortBy={params.sortBy}
+        order={params.order}
+        take={params.take}
+        filterBy={params.filterBy}
+      />
     </main>
   );
 }
