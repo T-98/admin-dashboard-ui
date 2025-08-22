@@ -2,7 +2,6 @@
 import { Suspense } from "react";
 import UserListContainer from "@/components/UserListContainer";
 import { normalizeSearchParams } from "@/lib/normalizeSearchParams";
-import { searchUsersServer } from "@/lib/server/searchUsers";
 import SearchBar from "@/components/SearchBar";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +25,6 @@ export default async function UsersPage({
     : searchParams ?? {};
 
   const params = normalizeSearchParams(raw);
-  const initialPage = await searchUsersServer(params);
 
   return (
     <main className="max-w-full mx-auto p-6">
