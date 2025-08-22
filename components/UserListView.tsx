@@ -1,4 +1,3 @@
-// components/UserListView.tsx
 import { useEffect, useState, useCallback } from "react";
 import type { User } from "@/hooks/usePaginatedUsers";
 import type { ColumnId } from "@/components/SearchBar";
@@ -20,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SelectScrollable } from "./SelectScrollable";
+import { SelectTeamsScrollable } from "./SelectTeamsScrollable";
 import { MoreVertical } from "lucide-react";
 
 interface Props {
@@ -33,7 +33,7 @@ interface Props {
   onPrevious: () => void;
   hasNext: boolean;
   isFetchingNextPage: boolean;
-  extraColumns?: ColumnId[]; // NEW
+  extraColumns?: ColumnId[]; // controls optional columns
 }
 
 export default function UserListView({
@@ -47,28 +47,72 @@ export default function UserListView({
   onPrevious,
   hasNext,
   isFetchingNextPage,
-  extraColumns = [], // NEW
+  extraColumns = [],
 }: Props) {
   const approxShown = Math.min((pageIndex + 1) * take, total);
   const canPrev = pageIndex > 0;
   const disableNext = !hasNext || isFetchingNextPage;
 
-  const [selectedByUser, setSelectedByUser] = useState<
+  // Selected Org per user
+  const [selectedOrgByUser, setSelectedOrgByUser] = useState<
     Record<number, number | null>
   >({});
 
+  // Selected Team per user (depends on selected org)
+  const [selectedTeamByUser, setSelectedTeamByUser] = useState<
+    Record<number, number | null>
+  >({});
+
+  // Initialize selections on page/user changes:
+  // - Org -> topmost org
+  // - Team -> first team that belongs to the selected org
   useEffect(() => {
-    const next: Record<number, number | null> = {};
+    const nextOrg: Record<number, number | null> = {};
+    const nextTeam: Record<number, number | null> = {};
+
     for (const u of users) {
-      next[u.id] = u.orgs[0]?.orgId ?? null;
+      const defaultOrgId = u.orgs[0]?.orgId ?? null;
+      nextOrg[u.id] = defaultOrgId;
+
+      if (defaultOrgId != null) {
+        const teamsInOrg = u.teams.filter((t) => t.orgId === defaultOrgId);
+        nextTeam[u.id] = teamsInOrg[0]?.teamId ?? null;
+      } else {
+        nextTeam[u.id] = null;
+      }
     }
-    setSelectedByUser(next);
+
+    setSelectedOrgByUser(nextOrg);
+    setSelectedTeamByUser(nextTeam);
   }, [users]);
 
+  // Handlers
   const handleSelectOrg = useCallback(
     (userId: number, orgId: number | null) => {
-      setSelectedByUser((prev) =>
+      setSelectedOrgByUser((prev) =>
         prev[userId] === orgId ? prev : { ...prev, [userId]: orgId }
+      );
+
+      // When org changes, reset team to first team in that org
+      setSelectedTeamByUser((prev) => {
+        const user = users.find((u) => u.id === userId);
+        if (!user || orgId == null) {
+          if (prev[userId] == null) return prev;
+          return { ...prev, [userId]: null };
+        }
+        const teamsInOrg = user.teams.filter((t) => t.orgId === orgId);
+        const nextTeamId = teamsInOrg[0]?.teamId ?? null;
+        if (prev[userId] === nextTeamId) return prev;
+        return { ...prev, [userId]: nextTeamId };
+      });
+    },
+    [users]
+  );
+
+  const handleSelectTeam = useCallback(
+    (userId: number, teamId: number | null) => {
+      setSelectedTeamByUser((prev) =>
+        prev[userId] === teamId ? prev : { ...prev, [userId]: teamId }
       );
     },
     []
@@ -85,10 +129,10 @@ export default function UserListView({
             <TableHead className="w-[220px]">Name</TableHead>
             <TableHead className="w-[260px]">Email</TableHead>
             <TableHead className="w-[280px]">Organization</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead className="text-center">Invite Status</TableHead>
+            <TableHead>Org Role</TableHead>
+            <TableHead className="text-center">Org Invite Status</TableHead>
 
-            {/* NEW: optional headers */}
+            {/* Optional headers */}
             {extraColumns.includes("team") && (
               <TableHead className="w-[280px]">Team</TableHead>
             )}
@@ -101,21 +145,33 @@ export default function UserListView({
           </TableRow>
         </TableHeader>
 
-        {/* Body unchanged for now */}
         <TableBody>
           {users.map((user) => {
             const selectedOrgId =
-              selectedByUser[user.id] ?? user.orgs[0]?.orgId ?? null;
-            const selectedOrg =
-              user.orgs.find((o) => o.orgId === selectedOrgId) ??
-              user.orgs[0] ??
-              null;
-            const roleLabel = selectedOrg?.role ?? "—";
+              selectedOrgByUser[user.id] ?? user.orgs[0]?.orgId ?? null;
+
+            const orgRole =
+              user.orgs.find((o) => o.orgId === selectedOrgId)?.role ?? "—";
+
+            // Only teams within selected org
+            const teamsInOrg =
+              selectedOrgId != null
+                ? user.teams.filter((t) => t.orgId === selectedOrgId)
+                : [];
+
+            const selectedTeamId =
+              selectedTeamByUser[user.id] ??
+              (teamsInOrg.length ? teamsInOrg[0].teamId : null);
+
+            const teamRole =
+              user.teams.find((t) => t.teamId === selectedTeamId)?.role ?? "—";
 
             return (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell className="truncate">{user.email}</TableCell>
+
+                {/* Organization */}
                 <TableCell>
                   <SelectScrollable
                     orgs={user.orgs}
@@ -125,10 +181,42 @@ export default function UserListView({
                     className="w-[260px] cursor-pointer"
                   />
                 </TableCell>
+
+                {/* Org Role */}
                 <TableCell>
-                  <Badge variant="outline">{roleLabel}</Badge>
+                  <Badge variant="outline">{orgRole}</Badge>
                 </TableCell>
+
+                {/* Invite Status (user-level, existing) */}
                 <TableCell className="text-center">—</TableCell>
+
+                {/* Optional: Team selector */}
+                {extraColumns.includes("team") && (
+                  <TableCell>
+                    <SelectTeamsScrollable
+                      teams={teamsInOrg}
+                      value={selectedTeamId}
+                      onChange={(teamId) => handleSelectTeam(user.id, teamId)}
+                      placeholder="Select team"
+                      className="w-[260px] cursor-pointer"
+                      disabled={teamsInOrg.length === 0}
+                    />
+                  </TableCell>
+                )}
+
+                {/* Optional: Team Role */}
+                {extraColumns.includes("teamRole") && (
+                  <TableCell>
+                    <Badge variant="outline">{teamRole}</Badge>
+                  </TableCell>
+                )}
+
+                {/* Optional: Team Invite Status (placeholder for now) */}
+                {extraColumns.includes("teamInviteStatus") && (
+                  <TableCell className="text-center">—</TableCell>
+                )}
+
+                {/* Actions */}
                 <TableCell className="text-center">
                   <Button variant="outline" className="cursor-pointer">
                     <MoreVertical className="h-4 w-4" />
@@ -140,7 +228,7 @@ export default function UserListView({
         </TableBody>
       </Table>
 
-      {/* Pagination controls */}
+      {/* Pagination */}
       <div className="mt-6 flex justify-between items-center">
         <Pagination>
           <PaginationContent className="gap-2">

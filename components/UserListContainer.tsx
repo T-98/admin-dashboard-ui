@@ -8,7 +8,7 @@ import { useUsersInfinite } from "@/hooks/useUsersInfinite";
 import type { ColumnId } from "@/components/SearchBar";
 
 interface Props extends SearchParams {
-  extraColumns?: ColumnId[]; // NEW
+  extraColumns?: ColumnId[];
 }
 
 export default function UserListContainer({
@@ -17,7 +17,7 @@ export default function UserListContainer({
   order = "asc",
   take = 10,
   filterBy,
-  extraColumns = [], // NEW
+  extraColumns = [],
 }: Props) {
   const params = useMemo(
     () => ({ q, sortBy, order, take, filterBy }),
@@ -67,7 +67,7 @@ export default function UserListContainer({
       onPrevious={onPrevious}
       hasNext={canNext}
       isFetchingNextPage={isFetchingNextPage}
-      extraColumns={extraColumns} // NEW
+      extraColumns={extraColumns}
     />
   );
 }
