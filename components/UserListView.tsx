@@ -16,7 +16,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { SelectScrollable } from "./SelectScrollable";
+import { MoreVertical } from "lucide-react";
 
 interface Props {
   users: User[];
@@ -46,6 +48,31 @@ export default function UserListView({
   const approxShown = Math.min((pageIndex + 1) * take, total);
   const canPrev = pageIndex > 0;
   const disableNext = !hasNext || isFetchingNextPage;
+
+  // ✅ Single state object for selections: { [userId]: orgId | null }
+  const [selectedByUser, setSelectedByUser] = useState<
+    Record<number, number | null>
+  >({});
+
+  // ✅ Reset to topmost org whenever the *list of users for this page* changes
+  useEffect(() => {
+    const next: Record<number, number | null> = {};
+    for (const u of users) {
+      next[u.id] = u.orgs[0]?.orgId ?? null;
+    }
+    setSelectedByUser(next);
+  }, [users]);
+
+  const handleSelectOrg = useCallback(
+    (userId: number, orgId: number | null) => {
+      setSelectedByUser((prev) => {
+        if (prev[userId] === orgId) return prev;
+        return { ...prev, [userId]: orgId };
+      });
+    },
+    []
+  );
+
   return (
     <div className="w-full">
       {!isLoading && !error && (
@@ -57,29 +84,19 @@ export default function UserListView({
               <TableHead className="w-[280px]">Organization</TableHead>
               <TableHead>Role</TableHead>
               <TableHead className="text-center">Invite Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {users.map((user) => {
               // Default to the topmost org for this row
-              const firstOrgId = user.orgs[0]?.orgId ?? null;
-              const [selectedOrgId, setSelectedOrgId] = useState<number | null>(
-                firstOrgId
-              );
-
-              // If the row’s data changes (new user or new org order), reset to topmost
-              useEffect(() => {
-                setSelectedOrgId(firstOrgId);
-              }, [firstOrgId, user.id]);
-
+              const selectedOrgId =
+                selectedByUser[user.id] ?? user.orgs[0]?.orgId ?? null;
               const selectedOrg =
                 user.orgs.find((o) => o.orgId === selectedOrgId) ??
                 user.orgs[0] ??
                 null;
               const roleLabel = selectedOrg?.role ?? "—";
-
               return (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
@@ -88,14 +105,18 @@ export default function UserListView({
                     <SelectScrollable
                       orgs={user.orgs}
                       value={selectedOrgId}
-                      onChange={setSelectedOrgId}
+                      onChange={(orgId) => handleSelectOrg(user.id, orgId)}
                       placeholder="Select organization"
-                      className="w-[260px]"
+                      className="w-[260px] cursor-pointer"
                     />
                   </TableCell>
                   <TableCell>{roleLabel}</TableCell>
                   <TableCell className="text-center">—</TableCell>
-                  <TableCell className="text-right">-</TableCell>
+                  <TableCell className="text-center">
+                    <Button variant="outline" className="cursor-pointer">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               );
             })}
