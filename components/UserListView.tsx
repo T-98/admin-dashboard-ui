@@ -54,9 +54,10 @@ export default function UserListView({
             <TableRow>
               <TableHead className="w-[220px]">Name</TableHead>
               <TableHead className="w-[260px]">Email</TableHead>
-              <TableHead className="w-[300px]">Organization</TableHead>
+              <TableHead className="w-[280px]">Organization</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead className="text-right">Invite Status</TableHead>
+              <TableHead className="text-center">Invite Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -93,7 +94,8 @@ export default function UserListView({
                     />
                   </TableCell>
                   <TableCell>{roleLabel}</TableCell>
-                  <TableCell className="text-right">—</TableCell>
+                  <TableCell className="text-center">—</TableCell>
+                  <TableCell className="text-right">-</TableCell>
                 </TableRow>
               );
             })}

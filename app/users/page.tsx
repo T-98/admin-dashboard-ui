@@ -30,6 +30,10 @@ export default async function UsersPage({
   return (
     <main className="max-w-full mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">User Directory</h1>
+      <input
+        type="search"
+        className="w-full h-8 border-2 border-slate-300 rounded-full mb-4 p-3"
+      ></input>
       <Suspense fallback={<div>Loading users...</div>}>
         <UserListContainer
           q={params.q}

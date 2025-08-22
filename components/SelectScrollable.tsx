@@ -78,11 +78,6 @@ export function SelectScrollable({
                 {/* Label with optional role hint */}
                 <span className="inline-flex items-center gap-2">
                   <span>{o.label}</span>
-                  {o.hint && (
-                    <span className="text-xs text-muted-foreground">
-                      — {o.hint}
-                    </span>
-                  )}
                 </span>
               </SelectItem>
             ))
