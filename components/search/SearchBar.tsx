@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import Filter from "./Filter";
-
+import { Sort } from "./Sort";
 // Stable options: ids are used for state, labels for UI
 export const COLUMN_OPTIONS = [
   { id: "team", label: "Team" },
@@ -44,7 +44,7 @@ export default function SearchBar({ selected, onChange }: Props) {
   return (
     <div className="w-full flex items-center justify-between gap-3 mb-4">
       <div className="flex items-center gap-2 flex-1">
-        <div className="relative w-full max-w-4xl">
+        <div className="relative w-full flex justify-between">
           <Search
             aria-hidden="true"
             className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
@@ -56,6 +56,7 @@ export default function SearchBar({ selected, onChange }: Props) {
             aria-label="Search users"
           />
         </div>
+        <Sort/>
         <Filter />
       </div>
 

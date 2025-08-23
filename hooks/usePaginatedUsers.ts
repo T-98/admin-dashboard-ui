@@ -1,4 +1,3 @@
-// hooks/usePaginatedUsers.ts
 export interface Org {
   orgId: number;
   name: string;

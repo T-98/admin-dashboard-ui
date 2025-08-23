@@ -5,7 +5,7 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import UserListView from "./UserListView";
 import type { SearchParams } from "@/hooks/usePaginatedUsers";
 import { useUsersInfinite } from "@/hooks/useUsersInfinite";
-import type { ColumnId } from "@/components/SearchBar";
+import type { ColumnId } from "@/components/search/SearchBar";
 
 interface Props extends SearchParams {
   extraColumns?: ColumnId[];

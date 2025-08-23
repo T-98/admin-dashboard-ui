@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import type { User } from "@/hooks/usePaginatedUsers";
-import type { ColumnId } from "@/components/SearchBar";
+import type { ColumnId } from "@/components/search/SearchBar";
 import {
   Pagination,
   PaginationContent,
@@ -217,7 +217,11 @@ export default function UserListView({
                 {/* Optional: Team Role */}
                 {extraColumns.includes("teamRole") && (
                   <TableCell>
-                    <Badge variant="outline">{teamRole}</Badge>
+                    <Badge
+                      variant={teamRole === "LEAD" ? "secondary" : "outline"}
+                    >
+                      {teamRole}
+                    </Badge>
                   </TableCell>
                 )}
 

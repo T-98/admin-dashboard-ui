@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useMemo, useState } from "react";
 import UserListContainer from "@/components/UserListContainer";
-import SearchBar, { ColumnId } from "@/components/SearchBar";
+import SearchBar, { ColumnId } from "@/components/search/SearchBar";
 import type { SearchParams } from "@/hooks/usePaginatedUsers";
 
 type Props = SearchParams;
