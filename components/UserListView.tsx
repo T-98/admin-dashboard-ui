@@ -184,7 +184,17 @@ export default function UserListView({
 
                 {/* Org Role */}
                 <TableCell>
-                  <Badge variant="outline">{orgRole}</Badge>
+                  <Badge
+                    variant={
+                      orgRole === "OWNER"
+                        ? "default"
+                        : orgRole === "ADMIN"
+                        ? "secondary"
+                        : "outline"
+                    }
+                  >
+                    {orgRole}
+                  </Badge>
                 </TableCell>
 
                 {/* Invite Status (user-level, existing) */}
