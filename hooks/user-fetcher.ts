@@ -13,7 +13,7 @@ export async function userFetcher(
         nextCursor: nextCursorValue,
       },
       headers: {
-        "x-email": "nick_mann@yahoo.com",
+        "x-email": "kennith77@hotmail.com",
         "x-password": "password123",
       },
     }
