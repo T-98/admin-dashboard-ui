@@ -1,6 +1,7 @@
+// components/search/SearchBar.tsx
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,13 +10,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Columns3Cog } from "lucide-react";
 import Filter from "./Filter";
 import { Sort, type SortBy } from "./Sort";
 import { buildUserSearchQueryFromUI, type SearchKey } from "@/lib/search-build";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 export const COLUMN_OPTIONS = [
   { id: "team", label: "Team" },
@@ -29,23 +35,86 @@ type Props = {
   selected: Set<ColumnId>;
   onChange: (next: Set<ColumnId>) => void;
   onQueryChange?: (key: SearchKey) => void;
+  debounceMs?: number;
 };
 
 export default function SearchBar({
   selected,
   onChange,
   onQueryChange,
+  debounceMs = 300,
 }: Props) {
-  // Local, immediate UI state
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortBy | null>(null);
   const [orgQuery, setOrgQuery] = useState("");
   const [teamQuery, setTeamQuery] = useState("");
 
-  // Debounced values used to build the actual request
-  const dq = useDebouncedValue(q, 500);
-  const dOrg = useDebouncedValue(orgQuery, 500);
-  const dTeam = useDebouncedValue(teamQuery, 500);
+  // Debounce for q
+  const [dq, setDq] = useState(q);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Use a string signature for dedupe (built URL is perfect)
+  const lastEmittedRef = useRef<string>("");
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setDq(q);
+      timerRef.current = null;
+    }, debounceMs);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [q, debounceMs]);
+
+  const builtDebounced = useMemo(
+    () =>
+      buildUserSearchQueryFromUI({
+        q: dq,
+        sortBy,
+        organizationName: orgQuery,
+        teamName: teamQuery,
+      }),
+    [dq, sortBy, orgQuery, teamQuery]
+  );
+
+  // Emit debounced key when builtDebounced changes (typing path)
+  useEffect(() => {
+    if (!onQueryChange) return;
+    const sig = builtDebounced.url; // string signature
+    if (sig !== lastEmittedRef.current) {
+      lastEmittedRef.current = sig;
+      onQueryChange(builtDebounced.key); // still emit structured key
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [builtDebounced]);
+
+  // Submit handler (Enter): cancel timer, emit raw q immediately, sync dq
+  const onSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      const builtNow = buildUserSearchQueryFromUI({
+        q,
+        sortBy,
+        organizationName: orgQuery,
+        teamName: teamQuery,
+      });
+      setDq(q);
+      const sig = builtNow.url; // string signature
+      if (sig !== lastEmittedRef.current) {
+        lastEmittedRef.current = sig;
+        onQueryChange?.(builtNow.key);
+      }
+    },
+    [q, sortBy, orgQuery, teamQuery, onQueryChange]
+  );
 
   const toggle = useCallback(
     (id: ColumnId, next: boolean) => {
@@ -56,53 +125,13 @@ export default function SearchBar({
     [selected, onChange]
   );
 
-  // Build the query from *debounced* text inputs
-  const built = useMemo(
-    () =>
-      buildUserSearchQueryFromUI({
-        q: dq,
-        sortBy, // helper already suppresses sortBy if q is empty
-        organizationName: dOrg,
-        teamName: dTeam,
-      }),
-    [dq, sortBy, dOrg, dTeam]
-  );
-
-  // Emit to parent so it can trigger data fetching
-  useEffect(() => {
-    onQueryChange?.(built.key);
-    // eslint-disable-next-line no-console
-    console.debug("[SearchBar] built (debounced):", built.url, built.key);
-  }, [built, onQueryChange]);
-
-  // Optional: flush debounce on Enter for instant search
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key !== "Enter") return;
-      const immediate = buildUserSearchQueryFromUI({
-        q, // use raw value to flush
-        sortBy,
-        organizationName: orgQuery,
-        teamName: teamQuery,
-      });
-      onQueryChange?.(immediate.key);
-      // eslint-disable-next-line no-console
-      console.debug(
-        "[SearchBar] built (enter-flush):",
-        immediate.url,
-        immediate.key
-      );
-    },
-    [q, sortBy, orgQuery, teamQuery, onQueryChange]
-  );
-
   const selectedCount = selected.size;
-  const queryHasQ = q.trim().length > 0;
+  const hasQ = q.trim().length > 0;
 
   return (
     <div className="w-full flex items-center justify-between gap-3 mb-4">
-      <div className="flex items-center gap-2 flex-1">
-        <div className="relative w-full flex justify-between">
+      <form onSubmit={onSubmit} className="flex items-center gap-2 flex-1">
+        <div className="relative w-full">
           <Search
             aria-hidden="true"
             className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
@@ -115,43 +144,53 @@ export default function SearchBar({
             aria-label="Search users"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={handleKeyDown}
           />
         </div>
 
-        {/* Sort is not debounced (discrete control) */}
-        <Sort value={sortBy} onChange={setSortBy} queryHasQ={queryHasQ} />
+        <Sort value={sortBy} onChange={setSortBy} queryHasQ={hasQ} />
 
-        {/* Filter inputs are debounced via dOrg/dTeam */}
         <Filter
           orgQuery={orgQuery}
           teamQuery={teamQuery}
           onOrgChange={setOrgQuery}
           onTeamChange={setTeamQuery}
         />
-      </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" aria-label="Choose visible columns">
-            Columns{selectedCount ? ` (${selectedCount})` : ""}
-          </Button>
-        </DropdownMenuTrigger>
+        <button type="submit" className="hidden" aria-hidden="true" />
+      </form>
 
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {COLUMN_OPTIONS.map((opt) => (
-            <DropdownMenuCheckboxItem
-              key={opt.id}
-              checked={selected.has(opt.id)}
-              onCheckedChange={(checked) => toggle(opt.id, Boolean(checked))}
-            >
-              {opt.label}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <TooltipProvider delayDuration={150}>
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" aria-label="Toggle Columns">
+                  <Columns3Cog className="mr-1 h-4 w-4" />
+                  {selectedCount ? `(${selectedCount})` : ""}
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+
+            <TooltipContent side="top" align="end">
+              Toggle Columns
+            </TooltipContent>
+          </Tooltip>
+
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {COLUMN_OPTIONS.map((opt) => (
+              <DropdownMenuCheckboxItem
+                key={opt.id}
+                checked={selected.has(opt.id)}
+                onCheckedChange={(checked) => toggle(opt.id, Boolean(checked))}
+              >
+                {opt.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TooltipProvider>
     </div>
   );
 }
