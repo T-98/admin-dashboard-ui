@@ -1,3 +1,4 @@
+// hooks/usePaginatedUsers.ts
 export interface Org {
   orgId: number;
   name: string;
@@ -24,10 +25,12 @@ export interface User {
 
 export interface SearchParams {
   q?: string;
-  sortBy?: string;
+  sortBy?: "mostRelevant" | "name" | "email" | "creationDate";
   order?: "asc" | "desc";
   take?: number;
-  filterBy?: string;
+  // new name-based filters:
+  organizationName?: string;
+  teamName?: string;
 }
 
 export interface PaginatedResponse {

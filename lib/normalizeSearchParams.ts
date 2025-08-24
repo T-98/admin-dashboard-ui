@@ -1,4 +1,3 @@
-// lib/normalizeSearchParams.ts
 import "server-only";
 import { z } from "zod";
 
@@ -7,12 +6,18 @@ const fromQuery = <T extends z.ZodTypeAny>(schema: T) =>
 
 export const SearchParamsSchema = z.object({
   q: fromQuery(z.string().trim().optional()).default(""),
-  sortBy: fromQuery(z.string().trim().optional()).default("name"),
-  order: fromQuery(z.enum(["asc", "desc"]).optional()).catch("asc"),
+  // IMPORTANT: no default here, we only include sortBy upstream if q is present
+  sortBy: fromQuery(
+    z.enum(["mostRelevant", "name", "email", "creationDate"]).optional()
+  ),
+  order: fromQuery(z.enum(["asc", "desc"]).optional()).default("asc"),
   take: fromQuery(z.coerce.number().int().min(1).max(100).optional()).default(
     10
   ),
-  filterBy: fromQuery(z.string().trim().optional()).optional(),
+
+  // New filters:
+  organizationName: fromQuery(z.string().trim().optional()),
+  teamName: fromQuery(z.string().trim().optional()),
 });
 
 export type NormalizedSearchParams = z.infer<typeof SearchParamsSchema>;

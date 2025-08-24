@@ -1,3 +1,4 @@
+// components/search/SearchBar.tsx
 "use client";
 
 import { useCallback, useMemo, useState, useEffect } from "react";
@@ -15,8 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import Filter from "./Filter";
 import { Sort, type SortBy } from "./Sort";
-
-import { buildUserSearchQueryFromUI } from "@/lib/search-build";
+import { buildUserSearchQueryFromUI, type SearchKey } from "@/lib/search-build";
 
 // Stable options: ids are used for state, labels for UI
 export const COLUMN_OPTIONS = [
@@ -30,12 +30,17 @@ export type ColumnId = (typeof COLUMN_OPTIONS)[number]["id"];
 type Props = {
   selected: Set<ColumnId>;
   onChange: (next: Set<ColumnId>) => void;
+  onQueryChange?: (key: SearchKey) => void; // NEW
 };
 
-export default function SearchBar({ selected, onChange }: Props) {
+export default function SearchBar({
+  selected,
+  onChange,
+  onQueryChange,
+}: Props) {
   // Local controlled state for the query builder
   const [q, setQ] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy | null>(null); // SearchBar decides whether to include it
+  const [sortBy, setSortBy] = useState<SortBy | null>(null);
   const [orgQuery, setOrgQuery] = useState("");
   const [teamQuery, setTeamQuery] = useState("");
 
@@ -48,28 +53,23 @@ export default function SearchBar({ selected, onChange }: Props) {
     [selected, onChange]
   );
 
-  //Building the query object to be sent to the backend
-  // Memoized to avoid unnecessary recalculations
-  // Recomputes when any of the dependencies change
-  // The buildUserSearchQueryFromUI function handles defaulting take & order
-  // and ignores sortBy if q is empty
   const built = useMemo(
     () =>
       buildUserSearchQueryFromUI({
         q,
-        sortBy, // "mostRelevant" | "name" | "email" | "creationDate" | null
+        sortBy,
         organizationName: orgQuery,
         teamName: teamQuery,
-        // take & order are defaulted inside the helper: 10 / "asc"
       }),
     [q, sortBy, orgQuery, teamQuery]
   );
 
-  // For now, just show in console that we're building the correct query
+  // Emit to parent so it can trigger data fetching
   useEffect(() => {
+    onQueryChange?.(built.key);
     // eslint-disable-next-line no-console
-    console.debug("[SearchBar] built query", built.url, built.params);
-  }, [built]);
+    console.debug("[SearchBar] built:", built.url, built.key);
+  }, [built, onQueryChange]);
 
   const selectedCount = selected.size;
 
@@ -92,10 +92,8 @@ export default function SearchBar({ selected, onChange }: Props) {
           />
         </div>
 
-        {/* Controlled sort (SearchBar decides whether to include it based on q) */}
         <Sort value={sortBy} onChange={setSortBy} />
 
-        {/* Controlled filters */}
         <Filter
           orgQuery={orgQuery}
           teamQuery={teamQuery}

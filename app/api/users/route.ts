@@ -1,20 +1,21 @@
-// app/api/users/search/route.ts
+// app/api/users/route.ts
 import { NextResponse } from "next/server";
-import { normalizeSearchParams } from "@/lib/normalizeSearchParams";
-import { searchUsersServer } from "@/lib/server/searchUsers";
+import { ENV } from "@/lib/env";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const raw = Object.fromEntries(url.searchParams.entries());
-  if (url.searchParams.has("nextCursor")) {
-    raw.nextCursor = url.searchParams.get("nextCursor") as string;
-  }
 
-  const params = normalizeSearchParams(raw);
-  const data = await searchUsersServer({
-    ...params,
-    nextCursor: (raw.nextCursor as string) || undefined,
-  });
+  const upstream = await fetch(
+    `${ENV.API_BASE_URL}/api/users/search?${url.searchParams.toString()}`,
+    {
+      headers: {
+        "x-email": process.env.SEARCH_API_EMAIL ?? "",
+        "x-password": process.env.SEARCH_API_PASSWORD ?? "",
+      },
+      cache: "no-store",
+    }
+  );
 
-  return NextResponse.json(data);
+  const data = await upstream.json();
+  return NextResponse.json(data, { status: upstream.status });
 }

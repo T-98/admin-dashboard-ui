@@ -16,12 +16,13 @@ export default function UserListContainer({
   sortBy,
   order = "asc",
   take = 10,
-  filterBy,
+  organizationName,
+  teamName,
   extraColumns = [],
 }: Props) {
   const params = useMemo(
-    () => ({ q, sortBy, order, take, filterBy }),
-    [q, sortBy, order, take, filterBy]
+    () => ({ q, sortBy, order, take, organizationName, teamName }),
+    [q, sortBy, order, take, organizationName, teamName]
   );
 
   const { data, hasNextPage, fetchNextPage, isFetchingNextPage } =
@@ -30,7 +31,14 @@ export default function UserListContainer({
   const [pageIndex, setPageIndex] = useState(0);
   useEffect(
     () => setPageIndex(0),
-    [params.q, params.sortBy, params.order, params.take, params.filterBy]
+    [
+      params.q,
+      params.sortBy,
+      params.order,
+      params.take,
+      params.organizationName,
+      params.teamName,
+    ]
   );
 
   const pages = data.pages;

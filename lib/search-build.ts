@@ -1,42 +1,60 @@
 // lib/search-build.ts
 import { z } from "zod";
 
-// Strict allow-list for sortBy
-const SortBySchema = z.enum(["mostRelevant", "name", "email", "creationDate"]);
+export const SortBySchema = z.enum([
+  "mostRelevant",
+  "name",
+  "email",
+  "creationDate",
+]);
 
-export const ClientSearchInputSchema = z.object({
-  q: z.string().trim().optional().default(""),
-  sortBy: SortBySchema.optional().nullable(), // we'll drop it if q is empty
-  organizationName: z.string().trim().optional(),
-  teamName: z.string().trim().optional(),
-  // these are fixed by product rules for now, but keep them here for clarity
-  take: z.coerce.number().int().min(1).max(100).default(10),
-  order: z.literal("asc").default("asc"),
-});
+export type SortBy = z.infer<typeof SortBySchema>;
 
-export type ClientSearchInput = z.infer<typeof ClientSearchInputSchema>;
+// This is the normalized shape we’ll use as the React Query key and fetch params.
+export type SearchKey = {
+  q?: string; // trimmed, optional
+  sortBy?: SortBy; // only present if q is non-empty
+  organizationName?: string; // trimmed, optional
+  teamName?: string; // trimmed, optional
+  take: number; // always 10
+  order: "asc"; // always asc
+};
 
-export function buildUserSearchQueryFromUI(input: Partial<ClientSearchInput>) {
-  const parsed = ClientSearchInputSchema.parse(input);
-  const params = new URLSearchParams();
+type BuildInput = {
+  q?: string;
+  sortBy?: SortBy | null;
+  organizationName?: string;
+  teamName?: string;
+};
 
-  // always fixed for now
-  params.set("take", String(parsed.take));
-  params.set("order", parsed.order);
+export function buildUserSearchQueryFromUI(input: BuildInput) {
+  const qTrim = (input.q ?? "").trim();
+  const orgTrim = (input.organizationName ?? "").trim();
+  const teamTrim = (input.teamName ?? "").trim();
 
-  const q = parsed.q?.trim() ?? "";
-  if (q) {
-    params.set("q", q);
-    if (parsed.sortBy) params.set("sortBy", parsed.sortBy);
-  }
-  // filters by name
-  if (parsed.organizationName?.trim())
-    params.set("organizationName", parsed.organizationName.trim());
-  if (parsed.teamName?.trim()) params.set("teamName", parsed.teamName.trim());
+  // Build the normalized key object (what we’ll feed to React Query + fetcher)
+  const key: SearchKey = {
+    take: 10,
+    order: "asc",
+    ...(qTrim ? { q: qTrim } : {}),
+    ...(qTrim && input.sortBy ? { sortBy: input.sortBy } : {}),
+    ...(orgTrim ? { organizationName: orgTrim } : {}),
+    ...(teamTrim ? { teamName: teamTrim } : {}),
+  };
+
+  // Also provide a URLSearchParams version (handy for debugging)
+  const qs = new URLSearchParams();
+  qs.set("take", String(key.take));
+  qs.set("order", key.order);
+  if (key.q) qs.set("q", key.q);
+  if (key.sortBy) qs.set("sortBy", key.sortBy);
+  if (key.organizationName) qs.set("organizationName", key.organizationName);
+  if (key.teamName) qs.set("teamName", key.teamName);
 
   return {
-    search: params.toString(),
-    url: `/api/users/search?${params.toString()}`,
-    params: Object.fromEntries(params.entries()),
+    key,
+    params: Object.fromEntries(qs.entries()),
+    search: qs.toString(),
+    url: `/api/users/search?${qs.toString()}`,
   };
 }
