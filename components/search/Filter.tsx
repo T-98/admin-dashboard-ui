@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+"use client";
+
+import * as React from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,15 +13,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function Filter() {
-  const [orgQuery, setOrgQuery] = useState("");
-  const [teamQuery, setTeamQuery] = useState("");
+type Props = {
+  orgQuery: string;
+  teamQuery: string;
+  onOrgChange: (v: string) => void;
+  onTeamChange: (v: string) => void;
+};
 
-  // Applied if either input has a value (trim to avoid whitespace-only)
-  const isApplied = useMemo(
-    () => orgQuery.trim().length > 0 || teamQuery.trim().length > 0,
-    [orgQuery, teamQuery]
-  );
+export default function Filter({
+  orgQuery,
+  teamQuery,
+  onOrgChange,
+  onTeamChange,
+}: Props) {
+  const isApplied = orgQuery.trim().length > 0 || teamQuery.trim().length > 0;
 
   return (
     <DropdownMenu>
@@ -49,7 +56,7 @@ export default function Filter() {
             className="p-2"
             aria-label="Type org name"
             value={orgQuery}
-            onChange={(e) => setOrgQuery(e.target.value)}
+            onChange={(e) => onOrgChange(e.target.value)}
           />
         </div>
 
@@ -62,7 +69,7 @@ export default function Filter() {
             className="p-2"
             aria-label="Type team name"
             value={teamQuery}
-            onChange={(e) => setTeamQuery(e.target.value)}
+            onChange={(e) => onTeamChange(e.target.value)}
           />
         </div>
       </DropdownMenuContent>

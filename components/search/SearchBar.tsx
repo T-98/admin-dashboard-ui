@@ -1,5 +1,6 @@
 "use client";
-import { useCallback } from "react";
+
+import { useCallback, useMemo, useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import Filter from "./Filter";
-import { Sort } from "./Sort";
+import { Sort, type SortBy } from "./Sort";
+
+import { buildUserSearchQueryFromUI } from "@/lib/search-build";
+
 // Stable options: ids are used for state, labels for UI
 export const COLUMN_OPTIONS = [
   { id: "team", label: "Team" },
@@ -29,6 +33,12 @@ type Props = {
 };
 
 export default function SearchBar({ selected, onChange }: Props) {
+  // Local controlled state for the query builder
+  const [q, setQ] = useState("");
+  const [sortBy, setSortBy] = useState<SortBy | null>(null); // SearchBar decides whether to include it
+  const [orgQuery, setOrgQuery] = useState("");
+  const [teamQuery, setTeamQuery] = useState("");
+
   const toggle = useCallback(
     (id: ColumnId, next: boolean) => {
       const s = new Set(selected);
@@ -38,7 +48,29 @@ export default function SearchBar({ selected, onChange }: Props) {
     [selected, onChange]
   );
 
-  // Optional: show a count on the trigger (nice affordance)
+  //Building the query object to be sent to the backend
+  // Memoized to avoid unnecessary recalculations
+  // Recomputes when any of the dependencies change
+  // The buildUserSearchQueryFromUI function handles defaulting take & order
+  // and ignores sortBy if q is empty
+  const built = useMemo(
+    () =>
+      buildUserSearchQueryFromUI({
+        q,
+        sortBy, // "mostRelevant" | "name" | "email" | "creationDate" | null
+        organizationName: orgQuery,
+        teamName: teamQuery,
+        // take & order are defaulted inside the helper: 10 / "asc"
+      }),
+    [q, sortBy, orgQuery, teamQuery]
+  );
+
+  // For now, just show in console that we're building the correct query
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.debug("[SearchBar] built query", built.url, built.params);
+  }, [built]);
+
   const selectedCount = selected.size;
 
   return (
@@ -50,14 +82,26 @@ export default function SearchBar({ selected, onChange }: Props) {
             className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
           />
           <Input
+            id="search"
             type="search"
             placeholder="Search users…"
             className="pl-9"
             aria-label="Search users"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <Sort/>
-        <Filter />
+
+        {/* Controlled sort (SearchBar decides whether to include it based on q) */}
+        <Sort value={sortBy} onChange={setSortBy} />
+
+        {/* Controlled filters */}
+        <Filter
+          orgQuery={orgQuery}
+          teamQuery={teamQuery}
+          onOrgChange={setOrgQuery}
+          onTeamChange={setTeamQuery}
+        />
       </div>
 
       <DropdownMenu>
