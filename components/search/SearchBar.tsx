@@ -92,7 +92,11 @@ export default function SearchBar({
           />
         </div>
 
-        <Sort value={sortBy} onChange={setSortBy} />
+        <Sort
+          value={sortBy}
+          onChange={setSortBy}
+          queryHasQ={q.trim().length > 0}
+        />
 
         <Filter
           orgQuery={orgQuery}

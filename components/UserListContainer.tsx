@@ -76,6 +76,7 @@ export default function UserListContainer({
       hasNext={canNext}
       isFetchingNextPage={isFetchingNextPage}
       extraColumns={extraColumns}
+      searchParams={params}
     />
   );
 }

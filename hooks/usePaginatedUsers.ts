@@ -25,7 +25,7 @@ export interface User {
 
 export interface SearchParams {
   q?: string;
-  sortBy?: "mostRelevant" | "name" | "email" | "creationDate";
+  sortBy?: "mostRelevant" | "name" | "email" | "createdAt";
   order?: "asc" | "desc";
   take?: number;
   // new name-based filters:

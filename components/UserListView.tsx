@@ -34,6 +34,7 @@ interface Props {
   hasNext: boolean;
   isFetchingNextPage: boolean;
   extraColumns?: ColumnId[]; // controls optional columns
+  searchParams: any;
 }
 
 export default function UserListView({
@@ -48,6 +49,7 @@ export default function UserListView({
   hasNext,
   isFetchingNextPage,
   extraColumns = [],
+  searchParams,
 }: Props) {
   const approxShown = Math.min((pageIndex + 1) * take, total);
   const canPrev = pageIndex > 0;
@@ -63,28 +65,70 @@ export default function UserListView({
     Record<number, number | null>
   >({});
 
-  // Initialize selections on page/user changes:
-  // - Org -> topmost org
-  // - Team -> first team that belongs to the selected org
+  // Initialize selections on page/user or filter changes:
+  // - Org -> orgName if provided, else org of teamName if provided, else first org
+  // - Team -> teamName within that org if provided, else first team in that org
   useEffect(() => {
+    const orgFilter = (searchParams?.organizationName ?? "")
+      .trim()
+      .toLowerCase();
+    const teamFilter = (searchParams?.teamName ?? "").trim().toLowerCase();
+
     const nextOrg: Record<number, number | null> = {};
     const nextTeam: Record<number, number | null> = {};
 
     for (const u of users) {
-      const defaultOrgId = u.orgs[0]?.orgId ?? null;
+      // 1) Resolve default org
+      let defaultOrgId: number | null = null;
+
+      // Try explicit org filter first
+      if (orgFilter) {
+        const byOrgName = u.orgs.find(
+          (o) => o.name.trim().toLowerCase() === orgFilter
+        );
+        if (byOrgName) defaultOrgId = byOrgName.orgId;
+      }
+
+      // If no explicit org, try to infer org from team filter
+      if (defaultOrgId == null && teamFilter) {
+        const byTeamName = u.teams.find(
+          (t) => t.name.trim().toLowerCase() === teamFilter
+        );
+        if (byTeamName) defaultOrgId = byTeamName.orgId;
+      }
+
+      // Fallback to first org
+      if (defaultOrgId == null) {
+        defaultOrgId = u.orgs[0]?.orgId ?? null;
+      }
       nextOrg[u.id] = defaultOrgId;
 
-      if (defaultOrgId != null) {
-        const teamsInOrg = u.teams.filter((t) => t.orgId === defaultOrgId);
-        nextTeam[u.id] = teamsInOrg[0]?.teamId ?? null;
-      } else {
-        nextTeam[u.id] = null;
+      // 2) Resolve default team within the chosen org
+      const teamsInOrg =
+        defaultOrgId != null
+          ? u.teams.filter((t) => t.orgId === defaultOrgId)
+          : [];
+
+      let defaultTeamId: number | null = null;
+
+      if (teamFilter) {
+        const teamInOrg = teamsInOrg.find(
+          (t) => t.name.trim().toLowerCase() === teamFilter
+        );
+        if (teamInOrg) defaultTeamId = teamInOrg.teamId;
       }
+
+      if (defaultTeamId == null) {
+        defaultTeamId = teamsInOrg[0]?.teamId ?? null;
+      }
+
+      nextTeam[u.id] = defaultTeamId;
     }
 
     setSelectedOrgByUser(nextOrg);
     setSelectedTeamByUser(nextTeam);
-  }, [users]);
+    // IMPORTANT: rerun when filters change too
+  }, [users, searchParams?.organizationName, searchParams?.teamName]);
 
   // Handlers
   const handleSelectOrg = useCallback(

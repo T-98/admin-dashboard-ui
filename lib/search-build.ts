@@ -1,12 +1,7 @@
 // lib/search-build.ts
 import { z } from "zod";
 
-export const SortBySchema = z.enum([
-  "mostRelevant",
-  "name",
-  "email",
-  "creationDate",
-]);
+export const SortBySchema = z.enum(["mostRelevant", "name", "email", "createdAt"]);
 
 export type SortBy = z.infer<typeof SortBySchema>;
 

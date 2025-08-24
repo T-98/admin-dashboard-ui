@@ -8,7 +8,7 @@ export const SearchParamsSchema = z.object({
   q: fromQuery(z.string().trim().optional()).default(""),
   // IMPORTANT: no default here, we only include sortBy upstream if q is present
   sortBy: fromQuery(
-    z.enum(["mostRelevant", "name", "email", "creationDate"]).optional()
+    z.enum(["mostRelevant", "name", "email", "createdAt"]).optional()
   ),
   order: fromQuery(z.enum(["asc", "desc"]).optional()).default("asc"),
   take: fromQuery(z.coerce.number().int().min(1).max(100).optional()).default(
