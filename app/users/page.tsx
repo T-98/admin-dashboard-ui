@@ -31,7 +31,6 @@ export default async function UsersPage({
         sortBy={params.sortBy}
         order={params.order}
         take={params.take}
-        filterBy={params.filterBy}
       />
     </main>
   );

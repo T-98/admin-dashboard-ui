@@ -5,6 +5,7 @@ import UserListContainer from "@/components/UserListContainer";
 import SearchBar, { ColumnId } from "@/components/search/SearchBar";
 import type { SearchParams } from "@/hooks/usePaginatedUsers";
 import type { SearchKey } from "@/lib/search-build";
+import UserTableSkeleton from "@/components/UserTableSkeleton";
 
 type Props = SearchParams;
 
@@ -32,7 +33,9 @@ export default function UsersClient(initial: Props) {
         onChange={setSelected}
         onQueryChange={handleQueryChange}
       />
-      <Suspense fallback={<div>Loading users...</div>}>
+      <Suspense
+        fallback={<UserTableSkeleton rows={10} extraColumns={extraColumns} />}
+      >
         <UserListContainer {...searchKey} extraColumns={extraColumns} />
       </Suspense>
     </>

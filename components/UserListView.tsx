@@ -1,5 +1,5 @@
 // components/UserListView.tsx
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, JSX } from "react";
 import type { User } from "@/hooks/usePaginatedUsers";
 import type { ColumnId } from "@/components/search/SearchBar";
 import {
@@ -28,12 +28,9 @@ import {
   Building,
   BriefcaseBusiness,
   Inbox,
-  MailCheck,
-  MailX,
-  MailQuestionMark,
   UsersRound,
-  Clapperboard,
   Briefcase,
+  Clapperboard,
 } from "lucide-react";
 
 interface Props {
@@ -68,6 +65,16 @@ export default function UserListView({
   const approxShown = Math.min((pageIndex + 1) * take, total);
   const canPrev = pageIndex > 0;
   const disableNext = !hasNext || isFetchingNextPage;
+
+  const showTeam = extraColumns.includes("team");
+  const showTeamRole = extraColumns.includes("teamRole");
+  const showTeamInvite = extraColumns.includes("teamInviteStatus");
+
+  // one width to rule them all
+  const W_MAIN = "w-[16rem]"; // name, email, org, team
+  const W_ROLE = "w-[12rem]"; // org role, team role
+  const W_STATUS = "w-[9rem]"; // org invite, team invite
+  const W_ACTION = "w-[10rem]"; // actions
 
   // Selected Org per user
   const [selectedOrgByUser, setSelectedOrgByUser] = useState<
@@ -109,9 +116,7 @@ export default function UserListView({
         if (byTeamName) defaultOrgId = byTeamName.orgId;
       }
 
-      if (defaultOrgId == null) {
-        defaultOrgId = u.orgs[0]?.orgId ?? null;
-      }
+      if (defaultOrgId == null) defaultOrgId = u.orgs[0]?.orgId ?? null;
       nextOrg[u.id] = defaultOrgId;
 
       // 2) Resolve default team within the chosen org
@@ -129,9 +134,7 @@ export default function UserListView({
         if (teamInOrg) defaultTeamId = teamInOrg.teamId;
       }
 
-      if (defaultTeamId == null) {
-        defaultTeamId = teamsInOrg[0]?.teamId ?? null;
-      }
+      if (defaultTeamId == null) defaultTeamId = teamsInOrg[0]?.teamId ?? null;
 
       nextTeam[u.id] = defaultTeamId;
     }
@@ -145,8 +148,6 @@ export default function UserListView({
       setSelectedOrgByUser((prev) =>
         prev[userId] === orgId ? prev : { ...prev, [userId]: orgId }
       );
-
-      // When org changes, reset team to first team in that org
       setSelectedTeamByUser((prev) => {
         const user = users.find((u) => u.id === userId);
         if (!user || orgId == null) {
@@ -174,66 +175,79 @@ export default function UserListView({
   if (isLoading) return <div>Loading users...</div>;
   if (error) return <div className="text-red-600">Error: {error.message}</div>;
 
+  // colgroup reflecting visible columns, all the same width
+  const cols = useMemo(() => {
+    const arr: JSX.Element[] = [
+      <col key="name" className={W_MAIN} />,
+      <col key="email" className={W_MAIN} />,
+      <col key="org" className={W_MAIN} />,
+      <col key="orgRole" className={W_ROLE} />,
+      <col key="orgInvite" className={W_STATUS} />,
+    ];
+    if (showTeam) arr.push(<col key="team" className={W_MAIN} />);
+    if (showTeamRole) arr.push(<col key="teamRole" className={W_ROLE} />);
+    if (showTeamInvite) arr.push(<col key="teamInvite" className={W_STATUS} />);
+    arr.push(<col key="actions" className={W_ACTION} />);
+    return arr;
+  }, [showTeam, showTeamRole, showTeamInvite]);
+
   return (
-    <div className="w-full">
-      <Table>
+    <div className="w-full overflow-x-auto">
+      <Table className="table-fixed w-full">
+        <colgroup>{cols}</colgroup>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[220px]">
-              <span className="flex gap-2 items-center">
+            <TableHead>
+              <span className="flex items-center gap-2 whitespace-nowrap">
                 Name <LetterText size={16} />
               </span>
             </TableHead>
-            <TableHead className="w-[260px]">
-              <span className="flex gap-2 items-center">
+            <TableHead>
+              <span className="flex items-center gap-2 whitespace-nowrap">
                 Email <AtSign size={16} />
               </span>
             </TableHead>
-            <TableHead className="w-[280px]">
-              <span className="flex gap-2 items-center">
+            <TableHead>
+              <span className="flex items-center gap-2 whitespace-nowrap">
                 Organization <Building size={16} />
               </span>
             </TableHead>
-            <TableHead className="w-[200px]">
-              <span className="flex gap-2 items-center">
-                OrgRole <BriefcaseBusiness size={16} />
+            <TableHead>
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                Org Role <BriefcaseBusiness size={16} />
               </span>
             </TableHead>
-            <TableHead className="text-center">
-              {" "}
-              <span className="flex gap-2 items-center">
+            <TableHead>
+              <span className="flex items-center justify-center gap-2 whitespace-nowrap">
                 Org Invite Status <Inbox size={16} />
               </span>
             </TableHead>
 
-            {extraColumns.includes("team") && (
-              <TableHead className="w-[280px]">
-                {" "}
-                <span className="flex gap-2 items-center">
+            {showTeam && (
+              <TableHead>
+                <span className="flex items-center gap-2 whitespace-nowrap">
                   Team <UsersRound size={16} />
                 </span>
               </TableHead>
             )}
-            {extraColumns.includes("teamRole") && (
-              <TableHead className="w-[200px]">
-                <span className="flex gap-2 items-center">
+            {showTeamRole && (
+              <TableHead>
+                <span className="flex items-center gap-2 whitespace-nowrap">
                   Team Role <Briefcase size={16} />
                 </span>
               </TableHead>
             )}
-            {extraColumns.includes("teamInviteStatus") && (
-              <TableHead className="text-center w-[200px]">
-                <span className="flex gap-2 items-center">
+            {showTeamInvite && (
+              <TableHead>
+                <span className="flex items-center justify-center gap-2 whitespace-nowrap">
                   Team Invite Status <Inbox size={16} />
                 </span>
               </TableHead>
             )}
 
-            {/* Actions header to keep columns aligned */}
-            <TableHead className="text-center">
-              <span className="flex gap-2 items-center">
-                Actions
-                <Clapperboard size={16} />
+            <TableHead>
+              <span className="flex items-center justify-center gap-2 whitespace-nowrap">
+                Actions <Clapperboard size={16} />
               </span>
             </TableHead>
           </TableRow>
@@ -280,22 +294,23 @@ export default function UserListView({
 
             return (
               <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell className="font-medium truncate">
+                  {user.name}
+                </TableCell>
                 <TableCell className="truncate">{user.email}</TableCell>
 
-                {/* Organization */}
+                {/* Organization selector */}
                 <TableCell>
                   <SelectScrollable
                     orgs={user.orgs}
                     value={selectedOrgId}
                     onChange={(orgId) => handleSelectOrg(user.id, orgId)}
                     placeholder="Select organization"
-                    className="w-[260px] cursor-pointer"
+                    className="w-full cursor-pointer"
                   />
                 </TableCell>
 
-                {/* Org Role */}
-                <TableCell className="w-[20px] border-2 border-amber-300">
+                <TableCell>
                   <Badge
                     variant={
                       orgRoleLabel === "OWNER"
@@ -309,25 +324,24 @@ export default function UserListView({
                   </Badge>
                 </TableCell>
 
-                {/* Org Invite Status */}
-                <TableCell className="text-center">{orgInviteStatus}</TableCell>
+                <TableCell className="text-center whitespace-nowrap">
+                  {orgInviteStatus}
+                </TableCell>
 
-                {/* Team selector (optional) */}
-                {extraColumns.includes("team") && (
+                {showTeam && (
                   <TableCell>
                     <SelectTeamsScrollable
                       teams={teamsInOrg}
                       value={selectedTeamId}
                       onChange={(teamId) => handleSelectTeam(user.id, teamId)}
                       placeholder="Select team"
-                      className="w-[260px] cursor-pointer"
+                      className="w-full cursor-pointer"
                       disabled={teamsInOrg.length === 0}
                     />
                   </TableCell>
                 )}
 
-                {/* Team Role (optional) */}
-                {extraColumns.includes("teamRole") && (
+                {showTeamRole && (
                   <TableCell>
                     <Badge
                       variant={teamRole === "LEAD" ? "secondary" : "outline"}
@@ -337,9 +351,8 @@ export default function UserListView({
                   </TableCell>
                 )}
 
-                {/* Team Invite Status (optional) */}
-                {extraColumns.includes("teamInviteStatus") && (
-                  <TableCell className="text-center">
+                {showTeamInvite && (
+                  <TableCell className="text-center whitespace-nowrap">
                     {teamInviteStatus}
                   </TableCell>
                 )}
