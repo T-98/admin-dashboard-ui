@@ -21,7 +21,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SelectScrollable } from "./SelectScrollable";
 import { SelectTeamsScrollable } from "./SelectTeamsScrollable";
-import { MoreVertical } from "lucide-react";
+import {
+  MoreVertical,
+  AtSign,
+  LetterText,
+  Building,
+  BriefcaseBusiness,
+  Inbox,
+  MailCheck,
+  MailX,
+  MailQuestionMark,
+  UsersRound,
+  Clapperboard,
+  Briefcase,
+} from "lucide-react";
 
 interface Props {
   users: User[];
@@ -166,24 +179,63 @@ export default function UserListView({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[220px]">Name</TableHead>
-            <TableHead className="w-[260px]">Email</TableHead>
-            <TableHead className="w-[280px]">Organization</TableHead>
-            <TableHead>Org Role</TableHead>
-            <TableHead className="text-center">Org Invite Status</TableHead>
+            <TableHead className="w-[220px]">
+              <span className="flex gap-2 items-center">
+                Name <LetterText size={16} />
+              </span>
+            </TableHead>
+            <TableHead className="w-[260px]">
+              <span className="flex gap-2 items-center">
+                Email <AtSign size={16} />
+              </span>
+            </TableHead>
+            <TableHead className="w-[280px]">
+              <span className="flex gap-2 items-center">
+                Organization <Building size={16} />
+              </span>
+            </TableHead>
+            <TableHead className="w-[200px]">
+              <span className="flex gap-2 items-center">
+                OrgRole <BriefcaseBusiness size={16} />
+              </span>
+            </TableHead>
+            <TableHead className="text-center">
+              {" "}
+              <span className="flex gap-2 items-center">
+                Org Invite Status <Inbox size={16} />
+              </span>
+            </TableHead>
 
             {extraColumns.includes("team") && (
-              <TableHead className="w-[280px]">Team</TableHead>
+              <TableHead className="w-[280px]">
+                {" "}
+                <span className="flex gap-2 items-center">
+                  Team <UsersRound size={16} />
+                </span>
+              </TableHead>
             )}
             {extraColumns.includes("teamRole") && (
-              <TableHead>Team Role</TableHead>
+              <TableHead className="w-[200px]">
+                <span className="flex gap-2 items-center">
+                  Team Role <Briefcase size={16} />
+                </span>
+              </TableHead>
             )}
             {extraColumns.includes("teamInviteStatus") && (
-              <TableHead className="text-center">Team Invite Status</TableHead>
+              <TableHead className="text-center w-[200px]">
+                <span className="flex gap-2 items-center">
+                  Team Invite Status <Inbox size={16} />
+                </span>
+              </TableHead>
             )}
 
             {/* Actions header to keep columns aligned */}
-            <TableHead className="text-center">Actions</TableHead>
+            <TableHead className="text-center">
+              <span className="flex gap-2 items-center">
+                Actions
+                <Clapperboard size={16} />
+              </span>
+            </TableHead>
           </TableRow>
         </TableHeader>
 
@@ -243,7 +295,7 @@ export default function UserListView({
                 </TableCell>
 
                 {/* Org Role */}
-                <TableCell>
+                <TableCell className="w-[20px] border-2 border-amber-300">
                   <Badge
                     variant={
                       orgRoleLabel === "OWNER"
