@@ -34,7 +34,7 @@ export async function userFetcher(
     headers: {
       // Prefer NEXT_PUBLIC_* if you want to read from env on the client
       "x-email":
-        process.env.NEXT_PUBLIC_SEARCH_API_EMAIL ?? "kennith77@hotmail.com",
+        process.env.NEXT_PUBLIC_SEARCH_API_EMAIL ?? "janelle12@gmail.com",
       "x-password":
         process.env.NEXT_PUBLIC_SEARCH_API_PASSWORD ?? "password123",
     },

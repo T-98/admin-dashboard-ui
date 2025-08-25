@@ -1,3 +1,4 @@
+// components/UserListView.tsx
 import { useEffect, useState, useCallback } from "react";
 import type { User } from "@/hooks/usePaginatedUsers";
 import type { ColumnId } from "@/components/search/SearchBar";
@@ -33,7 +34,7 @@ interface Props {
   onPrevious: () => void;
   hasNext: boolean;
   isFetchingNextPage: boolean;
-  extraColumns?: ColumnId[]; // controls optional columns
+  extraColumns?: ColumnId[];
   searchParams: any;
 }
 
@@ -81,7 +82,6 @@ export default function UserListView({
       // 1) Resolve default org
       let defaultOrgId: number | null = null;
 
-      // Try explicit org filter first
       if (orgFilter) {
         const byOrgName = u.orgs.find(
           (o) => o.name.trim().toLowerCase() === orgFilter
@@ -89,7 +89,6 @@ export default function UserListView({
         if (byOrgName) defaultOrgId = byOrgName.orgId;
       }
 
-      // If no explicit org, try to infer org from team filter
       if (defaultOrgId == null && teamFilter) {
         const byTeamName = u.teams.find(
           (t) => t.name.trim().toLowerCase() === teamFilter
@@ -97,7 +96,6 @@ export default function UserListView({
         if (byTeamName) defaultOrgId = byTeamName.orgId;
       }
 
-      // Fallback to first org
       if (defaultOrgId == null) {
         defaultOrgId = u.orgs[0]?.orgId ?? null;
       }
@@ -127,10 +125,8 @@ export default function UserListView({
 
     setSelectedOrgByUser(nextOrg);
     setSelectedTeamByUser(nextTeam);
-    // IMPORTANT: rerun when filters change too
   }, [users, searchParams?.organizationName, searchParams?.teamName]);
 
-  // Handlers
   const handleSelectOrg = useCallback(
     (userId: number, orgId: number | null) => {
       setSelectedOrgByUser((prev) =>
@@ -176,7 +172,6 @@ export default function UserListView({
             <TableHead>Org Role</TableHead>
             <TableHead className="text-center">Org Invite Status</TableHead>
 
-            {/* Optional headers */}
             {extraColumns.includes("team") && (
               <TableHead className="w-[280px]">Team</TableHead>
             )}
@@ -186,18 +181,31 @@ export default function UserListView({
             {extraColumns.includes("teamInviteStatus") && (
               <TableHead className="text-center">Team Invite Status</TableHead>
             )}
+
+            {/* Actions header to keep columns aligned */}
+            <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {users.map((user) => {
+            // ----- ORG SELECTION / ROLE / INVITE STATUS -----
             const selectedOrgId =
               selectedOrgByUser[user.id] ?? user.orgs[0]?.orgId ?? null;
 
-            const orgRole =
-              user.orgs.find((o) => o.orgId === selectedOrgId)?.role ?? "—";
+            const orgObj =
+              user.orgs.find((o) => o.orgId === selectedOrgId) ?? null;
 
-            // Only teams within selected org
+            // org invite: if missing but role exists, assume ACCEPTED; if both missing, show PENDING
+            const orgInviteStatus =
+              (orgObj as any)?.organizationInviteStatus ??
+              (orgObj?.role ? "ACCEPTED" : "PENDING");
+
+            // org role: if missing and invite is PENDING, show "Pending"
+            const orgRoleLabel =
+              orgObj?.role ?? (orgInviteStatus === "PENDING" ? "Pending" : "—");
+
+            // ----- TEAM SELECTION / ROLE / INVITE STATUS -----
             const teamsInOrg =
               selectedOrgId != null
                 ? user.teams.filter((t) => t.orgId === selectedOrgId)
@@ -207,8 +215,16 @@ export default function UserListView({
               selectedTeamByUser[user.id] ??
               (teamsInOrg.length ? teamsInOrg[0].teamId : null);
 
+            const selectedTeam =
+              teamsInOrg.find((t) => t.teamId === selectedTeamId) ?? null;
+
+            // team invite always exists per your data model
+            const teamInviteStatus =
+              (selectedTeam as any)?.teamInviteStatus ?? "—";
+
             const teamRole =
-              user.teams.find((t) => t.teamId === selectedTeamId)?.role ?? "—";
+              selectedTeam?.role ??
+              (teamInviteStatus === "PENDING" ? "Pending" : "—");
 
             return (
               <TableRow key={user.id}>
@@ -230,21 +246,21 @@ export default function UserListView({
                 <TableCell>
                   <Badge
                     variant={
-                      orgRole === "OWNER"
+                      orgRoleLabel === "OWNER"
                         ? "default"
-                        : orgRole === "ADMIN"
+                        : orgRoleLabel === "ADMIN"
                         ? "secondary"
                         : "outline"
                     }
                   >
-                    {orgRole}
+                    {orgRoleLabel}
                   </Badge>
                 </TableCell>
 
-                {/* Invite Status (user-level, existing) */}
-                <TableCell className="text-center">—</TableCell>
+                {/* Org Invite Status */}
+                <TableCell className="text-center">{orgInviteStatus}</TableCell>
 
-                {/* Optional: Team selector */}
+                {/* Team selector (optional) */}
                 {extraColumns.includes("team") && (
                   <TableCell>
                     <SelectTeamsScrollable
@@ -258,7 +274,7 @@ export default function UserListView({
                   </TableCell>
                 )}
 
-                {/* Optional: Team Role */}
+                {/* Team Role (optional) */}
                 {extraColumns.includes("teamRole") && (
                   <TableCell>
                     <Badge
@@ -269,9 +285,11 @@ export default function UserListView({
                   </TableCell>
                 )}
 
-                {/* Optional: Team Invite Status (placeholder for now) */}
+                {/* Team Invite Status (optional) */}
                 {extraColumns.includes("teamInviteStatus") && (
-                  <TableCell className="text-center">—</TableCell>
+                  <TableCell className="text-center">
+                    {teamInviteStatus}
+                  </TableCell>
                 )}
 
                 {/* Actions */}
