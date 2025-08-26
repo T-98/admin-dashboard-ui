@@ -31,6 +31,9 @@ import {
   UsersRound,
   Briefcase,
   Clapperboard,
+  CircleCheck,
+  Loader,
+  CircleX,
 } from "lucide-react";
 
 interface Props {
@@ -325,7 +328,16 @@ export default function UserListView({
                 </TableCell>
 
                 <TableCell className="text-center whitespace-nowrap">
-                  {orgInviteStatus}
+                  <Badge variant="outline">
+                    {orgInviteStatus === "ACCEPTED" ? (
+                      <CircleCheck color="#00bd1f" />
+                    ) : orgInviteStatus === "PENDING" ? (
+                      <Loader />
+                    ) : (
+                      <CircleX color="#fa0000" />
+                    )}
+                    {orgInviteStatus}
+                  </Badge>
                 </TableCell>
 
                 {showTeam && (
@@ -353,7 +365,16 @@ export default function UserListView({
 
                 {showTeamInvite && (
                   <TableCell className="text-center whitespace-nowrap">
-                    {teamInviteStatus}
+                    <Badge variant="outline">
+                      {teamInviteStatus === "ACCEPTED" ? (
+                        <CircleCheck color="#00bd1f" />
+                      ) : teamInviteStatus === "PENDING" ? (
+                        <Loader />
+                      ) : (
+                        <CircleX color="#fa0000" />
+                      )}
+                      {teamInviteStatus}
+                    </Badge>
                   </TableCell>
                 )}
 
