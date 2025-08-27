@@ -1,6 +1,6 @@
 // components/UserListView.tsx
 import { useEffect, useState, useCallback, useMemo, JSX } from "react";
-import type { User } from "@/hooks/usePaginatedUsers";
+import type { User, Org, Team } from "@/hooks/usePaginatedUsers";
 import type { ColumnId } from "@/components/search/SearchBar";
 import {
   Pagination,
@@ -36,6 +36,36 @@ import {
   CircleX,
 } from "lucide-react";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
+import InviteToTeam from "./InviteToTeam";
+
+type RowAction = "delete-user" | "invite-user";
+
+export type RowActionPayload = {
+  action: RowAction;
+  userName: string;
+  userId: number;
+  userEmail: string;
+  userOrgs: Org[];
+  userTeams: Team[];
+};
+
+type userPayload = {
+  id: number;
+  name: string;
+  email: string;
+  orgs: Org[];
+  teams: Team[];
+};
+
 interface Props {
   users: User[];
   total: number;
@@ -48,7 +78,19 @@ interface Props {
   hasNext: boolean;
   isFetchingNextPage: boolean;
   extraColumns?: ColumnId[];
-  searchParams: any;
+  searchParams: {
+    organizationName: string;
+    teamName: string;
+  };
+  onRowAction?: (payload: RowActionPayload) => void;
+}
+
+interface ExtendedOrg extends Org {
+  organizationInviteStatus: string;
+}
+
+interface ExtendedTeam extends Team {
+  teamInviteStatus: string;
 }
 
 export default function UserListView({
@@ -64,6 +106,7 @@ export default function UserListView({
   isFetchingNextPage,
   extraColumns = [],
   searchParams,
+  onRowAction,
 }: Props) {
   const approxShown = Math.min((pageIndex + 1) * take, total);
   const canPrev = pageIndex > 0;
@@ -175,9 +218,6 @@ export default function UserListView({
     []
   );
 
-  if (isLoading) return <div>Loading users...</div>;
-  if (error) return <div className="text-red-600">Error: {error.message}</div>;
-
   // colgroup reflecting visible columns, all the same width
   const cols = useMemo(() => {
     const arr: JSX.Element[] = [
@@ -193,6 +233,22 @@ export default function UserListView({
     arr.push(<col key="actions" className={W_ACTION} />);
     return arr;
   }, [showTeam, showTeamRole, showTeamInvite]);
+
+  const handleRowAction = useCallback(
+    (user: userPayload, action: RowAction): void =>
+      onRowAction?.({
+        action,
+        userName: user.name,
+        userEmail: user.email,
+        userId: user.id,
+        userOrgs: user.orgs,
+        userTeams: user.teams,
+      }),
+    [onRowAction]
+  );
+
+  if (isLoading) return <div>Loading users...</div>;
+  if (error) return <div className="text-red-600">Error: {error.message}</div>;
 
   return (
     <div className="w-full overflow-x-auto">
@@ -267,7 +323,7 @@ export default function UserListView({
 
             // org invite: if missing but role exists, assume ACCEPTED; if both missing, show PENDING
             const orgInviteStatus =
-              (orgObj as any)?.organizationInviteStatus ??
+              (orgObj as ExtendedOrg)?.organizationInviteStatus ??
               (orgObj?.role ? "ACCEPTED" : "PENDING");
 
             // org role: if missing and invite is PENDING, show "Pending"
@@ -289,7 +345,7 @@ export default function UserListView({
 
             // team invite always exists per your data model
             const teamInviteStatus =
-              (selectedTeam as any)?.teamInviteStatus ?? "—";
+              (selectedTeam as ExtendedTeam)?.teamInviteStatus ?? "—";
 
             const teamRole =
               selectedTeam?.role ??
@@ -332,7 +388,7 @@ export default function UserListView({
                     {orgInviteStatus === "ACCEPTED" ? (
                       <CircleCheck color="#00bd1f" />
                     ) : orgInviteStatus === "PENDING" ? (
-                      <Loader />
+                      <Loader color="#d1b202" />
                     ) : (
                       <CircleX color="#fa0000" />
                     )}
@@ -369,7 +425,7 @@ export default function UserListView({
                       {teamInviteStatus === "ACCEPTED" ? (
                         <CircleCheck color="#00bd1f" />
                       ) : teamInviteStatus === "PENDING" ? (
-                        <Loader />
+                        <Loader color="#d1b202" />
                       ) : (
                         <CircleX color="#fa0000" />
                       )}
@@ -380,9 +436,36 @@ export default function UserListView({
 
                 {/* Actions */}
                 <TableCell className="text-center">
-                  <Button variant="outline" className="cursor-pointer">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger
+                          onSelect={() => handleRowAction(user, "invite-user")}
+                        >
+                          Invite User
+                        </DropdownMenuSubTrigger>
+
+                        <DropdownMenuSubContent alignOffset={8}>
+                          {/* Your custom component */}
+                          <InviteToTeam />
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuItem
+                        variant="destructive"
+                        //Never call handler on an event directly, always wrap in another function to avoid immediate call
+                        onSelect={() => handleRowAction(user, "delete-user")}
+                      >
+                        Delete User
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             );

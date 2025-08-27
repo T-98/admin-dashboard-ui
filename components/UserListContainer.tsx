@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect } from "react";
-import UserListView from "./UserListView";
+import UserListView, { RowActionPayload } from "./UserListView";
 import type { SearchParams } from "@/hooks/usePaginatedUsers";
 import { useUsersInfinite } from "@/hooks/useUsersInfinite";
 import type { ColumnId } from "@/components/search/SearchBar";
@@ -63,6 +63,19 @@ export default function UserListContainer({
   const canNext =
     (pageIndex < pages.length - 1 || hasNextPage) && !isFetchingNextPage;
 
+  const handleRowAction = useCallback((p: RowActionPayload) => {
+    switch (p.action) {
+      case "invite-user":
+        // trigger mutation / open dialog / toast
+        console.log("Invite user:", p.userName, p.userEmail);
+        break;
+      case "delete-user":
+        // confirm + mutation
+        console.log("Delete user:", p.userName, p.userEmail);
+        break;
+    }
+  }, []);
+
   return (
     <UserListView
       users={current?.users ?? []}
@@ -77,6 +90,7 @@ export default function UserListContainer({
       isFetchingNextPage={isFetchingNextPage}
       extraColumns={extraColumns}
       searchParams={params}
+      onRowAction={handleRowAction}
     />
   );
 }
