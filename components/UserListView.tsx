@@ -79,8 +79,8 @@ interface Props {
   isFetchingNextPage: boolean;
   extraColumns?: ColumnId[];
   searchParams: {
-    organizationName: string;
-    teamName: string;
+    organizationName?: string;
+    teamName?: string;
   };
   onRowAction?: (payload: RowActionPayload) => void;
 }
