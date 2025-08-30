@@ -10,39 +10,45 @@ import { Label } from "@/components/ui/label";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3000";
 
+type LoginPayload = { email: string; password: string };
+type LoginResponse = { userId: number; name: string; email: string };
+
 export default function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const login = useMutation({
+  const login = useMutation<LoginResponse, Error, LoginPayload>({
     mutationKey: ["verify-login"],
-    mutationFn: async ({
-      email,
-      password,
-    }: {
-      email: string;
-      password: string;
-    }) => {
-      const res = await axios.post(
+    mutationFn: async (payload) => {
+      const res = await axios.post<LoginResponse>(
         `${API_BASE}/api/auth/login`,
-        { email, password },
-        {
-          validateStatus: () => true, // we handle non-2xx
-        }
+        payload,
+        { validateStatus: () => true }
       );
-      if (res.status >= 200 && res.status < 300) return true;
-      throw new Error(res.data?.message || "Invalid email or password");
+      if (res.status >= 200 && res.status < 300) {
+        return res.data; // ← return the actual payload so `login.data` is the user object
+      }
+      // if your API returns `{ message: string }` on error, try to surface it:
+      const msg =
+        (res.data as unknown as { message?: string })?.message ||
+        "Invalid email or password";
+      throw new Error(msg);
     },
-    onSuccess: () => {
+    onSuccess: (user) => {
+      // `user` is the same as `login.data`
+      sessionStorage.setItem("currentUser", JSON.stringify(user)); // Very bad practice for production apps! Use cookies or secure storage instead.
       router.replace("/users");
     },
   });
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        // If you want the value immediately here, use mutateAsync:
+        // const user = await login.mutateAsync({ email, password });
+        // console.log("Logged in as:", user);
         login.mutate({ email, password });
       }}
       className="max-w-sm space-y-4"
@@ -74,6 +80,13 @@ export default function LoginForm() {
       <Button type="submit" className="w-full" disabled={login.isPending}>
         {login.isPending ? "Signing in..." : "Sign in"}
       </Button>
+
+      {/* Example: read the stored response */}
+      {login.isSuccess && (
+        <p className="text-sm text-muted-foreground mt-2">
+          Welcome, {login.data.name} ({login.data.email})
+        </p>
+      )}
 
       {login.isError && (
         <p className="text-sm text-red-600 mt-2">
