@@ -1,5 +1,6 @@
 import { normalizeSearchParams } from "@/lib/normalizeSearchParams";
 import UsersClient from "@/components/UsersClient";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +27,14 @@ export default async function UsersPage({
   return (
     <main className="max-w-full mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">User Directory</h1>
-      <UsersClient
-        q={params.q}
-        sortBy={params.sortBy}
-        order={params.order}
-        take={params.take}
-      />
+      <Suspense fallback={<p>Loading...</p>}>
+        <UsersClient
+          q={params.q}
+          sortBy={params.sortBy}
+          order={params.order}
+          take={params.take}
+        />
+      </Suspense>
     </main>
   );
 }

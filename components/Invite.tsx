@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,52 @@ interface Props {
   onRowAction?: (payload: RowActionPayload) => void;
 }
 
-const InviteToTeam = ({ userName, userEmail, userId, onRowAction }: Props) => {
+// Debounce rapid clicks to avoid multiple invites and
+// disable the specific org/team button until the action settles.
+
+const Invite = ({ userName, userEmail, userId, onRowAction }: Props) => {
   const { organizations: invitingUserOrgs, teams: invitingUserTeams } =
     useCurrentUserContext();
 
   const [role, setRole] = useState<Role>("MEMBER"); // default
+  // Track pending invites per target (e.g., org:123, team:456)
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+  const pendingRef = useRef<Record<string, boolean>>({});
+
+  const setPendingFor = (key: string, value: boolean) => {
+    if (value) {
+      pendingRef.current[key] = true;
+      setPending((prev) => ({ ...prev, [key]: true }));
+    } else {
+      delete pendingRef.current[key];
+      setPending((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
+  const isPending = (key: string) => !!pendingRef.current[key];
+
+  const handleInvite = async (key: string, payload: RowActionPayload) => {
+    if (isPending(key)) return; // debounce rapid clicks
+    setPendingFor(key, true);
+    try {
+      const maybePromise: any = onRowAction?.(payload);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        await maybePromise; // wait for caller to resolve
+      } else {
+        // Fallback: brief lock to absorb double-clicks
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      // Optionally, show toast on success (not implemented here)
+    } catch (_err) {
+      // Optionally, show toast on failure (not implemented here)
+    } finally {
+      setPendingFor(key, false);
+    }
+  };
 
   return (
     <ScrollArea className="h-72 w-56 rounded-md border">
@@ -60,10 +101,11 @@ const InviteToTeam = ({ userName, userEmail, userId, onRowAction }: Props) => {
                 size="sm"
                 className="h-7 w-full justify-start px-2 text-xs truncate"
                 aria-label={`Organization ${org.organization.name}`}
+                disabled={isPending(`org:${org.organizationId}`)}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onRowAction?.({
+                  handleInvite(`org:${org.organizationId}`, {
                     action: "invite-user",
                     userId,
                     userName,
@@ -95,10 +137,11 @@ const InviteToTeam = ({ userName, userEmail, userId, onRowAction }: Props) => {
                 size="sm"
                 className="h-7 w-full justify-start px-2 text-xs truncate"
                 aria-label={`Team ${team.team.name}`}
+                disabled={isPending(`team:${team.teamId}`)}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onRowAction?.({
+                  handleInvite(`team:${team.teamId}`, {
                     action: "invite-user",
                     userId,
                     userName,
@@ -124,4 +167,4 @@ const InviteToTeam = ({ userName, userEmail, userId, onRowAction }: Props) => {
   );
 };
 
-export default InviteToTeam;
+export default Invite;

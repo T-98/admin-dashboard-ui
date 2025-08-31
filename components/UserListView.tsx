@@ -45,7 +45,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import InviteToTeam from "./InviteToTeam";
+import Invite from "./Invite";
 import {
   TeamMembership,
   OrganizationMembership,
@@ -437,7 +437,7 @@ export default function UserListView({
                             onClick={(e) => e.stopPropagation()}
                             className="p-1"
                           >
-                            <InviteToTeam
+                            <Invite
                               userName={user.name}
                               userEmail={user.email}
                               userId={user.id}

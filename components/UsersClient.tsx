@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import UserListContainer from "@/components/UserListContainer";
 import SearchBar, { ColumnId } from "@/components/search/SearchBar";
@@ -13,7 +14,7 @@ import {
   TeamMembership,
 } from "@/contexts/CurrentUserContext";
 import { RowActionPayload } from "./UserListView";
-import type { User, Org, Team } from "@/hooks/usePaginatedUsers";
+import axios from "axios";
 
 type Props = SearchParams;
 
@@ -23,7 +24,13 @@ export default function UsersClient(initial: Props) {
   const extraColumns = useMemo(() => Array.from(selected), [selected]);
 
   // session user bootstrap
-  type CurrentUser = { userId: number; name: string; email: string } | null;
+  type CurrentUser = {
+    userId: number;
+    name: string;
+    email: string;
+    password: string;
+  } | null;
+
   const [user, setUser] = useState<CurrentUser>(null);
   const [checked, setChecked] = useState(false);
   const router = useRouter();
@@ -36,27 +43,19 @@ export default function UsersClient(initial: Props) {
     ...(initial.q && initial.sortBy ? { sortBy: initial.sortBy as any } : {}),
   });
 
-  /*
-export type RowActionPayload = {
-  action: RowAction;
-  userName: string;
-  userId: number;
-  userEmail: string;
-  invitedTo: string;
-  team?: TeamMembership;
-  organization?: OrganizationMembership;
-};
-*/
   const handleRowAction = (payload: RowActionPayload): string => {
     console.log("Row action triggered for user:", payload.userName);
     switch (payload.action) {
       case "invite-user":
         if (payload.invitedTo === "organization" && payload.organization) {
-          handleOrgInvite(payload.organization);
+          return handleOrgInvite(payload.organization, {
+            userName: payload.userName,
+            userId: payload.userId,
+            userEmail: payload.userEmail,
+          });
         } else if (payload.team) {
-          handleTeamInvite(payload.team);
+          return handleTeamInvite(payload.team);
         }
-        return "Invite sent";
       case "delete-user":
         console.log("Deleting user with ID:", payload.userId);
         return handleDelete({
@@ -70,15 +69,32 @@ export type RowActionPayload = {
     }
   };
 
-  // export type OrganizationMembership = {
-  //   organizationId: number;
-  //   role?: string | null;
-  //   organization: { name: string };
-  // };
-
-  const handleOrgInvite = (organization: OrganizationMembership): string => {
+  const handleOrgInvite = (
+    organization: OrganizationMembership,
+    invitedUser: { userName: string; userId: number; userEmail: string }
+  ): string => {
     console.log("Invite action triggered for entities:", organization);
     // Implement the invite logic here, e.g., open a modal or send an API request
+    const { data: orgInvite } = useQuery({
+      queryKey: ["inviteToOrg", organization.organizationId],
+      queryFn: () => {
+        return axios.post("http://localhost:3000/api/invites", {
+          headers: {
+            "x-email": user?.email || "",
+            "x-password": user?.password || "",
+          },
+          data: {
+            email: invitedUser.userEmail,
+            invitedUserId: invitedUser.userId,
+            orgRole: organization.role,
+            organizationId: organization.organizationId,
+            organizationName: organization.organization.name,
+          },
+        });
+      },
+    });
+    console.log("Invite response:", orgInvite);
+    //TODO: Show toast on success/failure
     return "Invite action completed";
   };
 
@@ -136,3 +152,4 @@ export type RowActionPayload = {
     </>
   );
 }
+
