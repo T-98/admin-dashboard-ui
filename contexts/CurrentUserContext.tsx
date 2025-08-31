@@ -46,7 +46,7 @@ export function CurrentUserProvider({
     queryKey: ["currentUserOrganizations", user.userId],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/api/organizations/${user.userId}`, {
-        headers: { "x-email": user.email, "x-password": "JaiGuru69" }, // demo-only
+        headers: { "x-email": user.email, "x-password": "password123" }, // demo-only
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load organizations");
@@ -63,7 +63,7 @@ export function CurrentUserProvider({
     queryKey: ["currentUserTeams", user.userId],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/api/teams/${user.userId}`, {
-        headers: { "x-email": user.email, "x-password": "JaiGuru69" }, // demo-only
+        headers: { "x-email": user.email, "x-password": "password123" }, // demo-only
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load teams");
