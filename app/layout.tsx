@@ -1,8 +1,9 @@
-// app/layout.tsx
-import "../styles/globals.css"; // or "../styles/globals.css" if that’s your path
+import type { Metadata } from "next";
+import "../styles/globals.css";
 import Providers from "./providers";
+import { ClientToaster } from "./client-toaster";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Admin Dashboard",
   description: "A simple admin dashboard for user management",
 };
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <ClientToaster />
+        </Providers>
       </body>
     </html>
   );

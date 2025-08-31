@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import UserListContainer from "@/components/UserListContainer";
 import SearchBar, { ColumnId } from "@/components/search/SearchBar";
@@ -15,6 +15,7 @@ import {
 } from "@/contexts/CurrentUserContext";
 import { RowActionPayload } from "./UserListView";
 import axios from "axios";
+import { toast } from "sonner";
 
 type Props = SearchParams;
 
@@ -43,6 +44,56 @@ export default function UsersClient(initial: Props) {
     ...(initial.q && initial.sortBy ? { sortBy: initial.sortBy as any } : {}),
   });
 
+  // ✅ Org invite mutation
+  const inviteToOrg = useMutation({
+    mutationKey: ["inviteToOrg"],
+    mutationFn: async ({
+      organization,
+      invitedUser,
+      auth,
+    }: {
+      organization: OrganizationMembership;
+      invitedUser: { userName: string; userId: number; userEmail: string };
+      auth: { email: string; password: string };
+    }) => {
+      return axios.post(
+        "http://localhost:3000/api/invites",
+        {
+          email: invitedUser.userEmail,
+          invitedUserId: invitedUser.userId,
+          orgRole: organization.role,
+          organizationId: organization.organizationId,
+          organizationName: organization.organization.name,
+        },
+        {
+          headers: {
+            "x-email": auth.email,
+            "x-password": auth.password,
+          },
+          validateStatus: () => true, // let us handle non-2xx
+        }
+      );
+    },
+    onSuccess: (res, vars) => {
+      if (res.status >= 200 && res.status < 300) {
+        toast.success("Invite sent", {
+          description: `Invited ${vars.invitedUser.userEmail} to ${
+            vars.organization.organization.name
+          } as ${vars.organization.role ?? "MEMBER"}.`,
+        });
+      } else {
+        const msg =
+          (res.data as any)?.message ||
+          `Failed to send invite (HTTP ${res.status})`;
+        toast.error("Invite failed", { description: msg });
+      }
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      toast.error("Network error", { description: msg });
+    },
+  });
+
   const handleRowAction = (payload: RowActionPayload): string => {
     console.log("Row action triggered for user:", payload.userName);
     switch (payload.action) {
@@ -53,8 +104,12 @@ export default function UsersClient(initial: Props) {
             userId: payload.userId,
             userEmail: payload.userEmail,
           });
-        } else if (payload.team) {
-          return handleTeamInvite(payload.team);
+        } else if (payload.team && payload.organization) {
+          return handleTeamInvite(payload.organization, payload.team, {
+            userName: payload.userName,
+            userId: payload.userId,
+            userEmail: payload.userEmail,
+          });
         }
       case "delete-user":
         console.log("Deleting user with ID:", payload.userId);
@@ -69,44 +124,35 @@ export default function UsersClient(initial: Props) {
     }
   };
 
+  // 🔁 Now uses the mutation (fires request; returns same string as before)
   const handleOrgInvite = (
     organization: OrganizationMembership,
     invitedUser: { userName: string; userId: number; userEmail: string }
   ): string => {
     console.log("Invite action triggered for entities:", organization);
-    // Implement the invite logic here, e.g., open a modal or send an API request
-    const { data: orgInvite } = useQuery({
-      queryKey: ["inviteToOrg", organization.organizationId],
-      queryFn: () => {
-        return axios.post("http://localhost:3000/api/invites", {
-          headers: {
-            "x-email": user?.email || "",
-            "x-password": user?.password || "",
-          },
-          data: {
-            email: invitedUser.userEmail,
-            invitedUserId: invitedUser.userId,
-            orgRole: organization.role,
-            organizationId: organization.organizationId,
-            organizationName: organization.organization.name,
-          },
-        });
-      },
-    });
-    console.log("Invite response:", orgInvite);
-    //TODO: Show toast on success/failure
+    inviteToOrg
+      .mutateAsync({
+        organization,
+        invitedUser,
+        auth: { email: user?.email || "", password: user?.password || "" },
+      })
+      .catch(() => {
+        /* handled in onError */
+      });
     return "Invite action completed";
   };
 
-  const handleTeamInvite = (team: TeamMembership): string => {
+  const handleTeamInvite = (
+    org: OrganizationMembership,
+    team: TeamMembership,
+    invitedUser: { userName: string; userId: number; userEmail: string }
+  ): string => {
     console.log("Invite action triggered for team:", team);
-    // Implement the invite logic here, e.g., open a modal or send an API request
     return "Invite action completed";
   };
 
   const handleDelete = (user: any): string => {
     console.log("Delete action triggered for user:", user);
-    // Implement the delete logic here, e.g., open a modal or send an API request
     return "Delete action completed";
   };
 
@@ -152,4 +198,3 @@ export default function UsersClient(initial: Props) {
     </>
   );
 }
-
