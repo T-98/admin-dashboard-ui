@@ -94,62 +94,140 @@ export default function UsersClient(initial: Props) {
     },
   });
 
+  // ✅ Team invite mutation
+  const inviteToTeam = useMutation({
+    mutationKey: ["inviteToTeam"],
+    mutationFn: async ({
+      payload,
+      auth,
+    }: {
+      payload: {
+        email: string;
+        orgRole: string;
+        organizationId: number;
+        organizationName: string;
+        teamRole: string;
+        teamId: number;
+        teamName: string;
+        invitedUserId: number;
+      };
+      auth: { email: string; password: string };
+    }) => {
+      return axios.post("http://localhost:3000/api/invites", payload, {
+        headers: {
+          "x-email": auth.email,
+          "x-password": auth.password,
+        },
+        validateStatus: () => true,
+      });
+    },
+    onSuccess: (res, vars) => {
+      if (res.status >= 200 && res.status < 300) {
+        toast.success("Team invite sent", {
+          description: `Invited ${vars.payload.email} to ${vars.payload.teamName} (${vars.payload.organizationName}) as ${vars.payload.teamRole}.`,
+        });
+      } else {
+        const msg =
+          (res.data as any)?.message ||
+          `Failed to send team invite (HTTP ${res.status})`;
+        toast.error("Team invite failed", { description: msg });
+      }
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      toast.error("Network error", { description: msg });
+    },
+  });
+
   const handleRowAction = (payload: RowActionPayload): string => {
     console.log("Row action triggered for user:", payload.userName);
+
     switch (payload.action) {
-      case "invite-user":
+      case "invite-user": {
+        // ORG invites
         if (payload.invitedTo === "organization" && payload.organization) {
           return handleOrgInvite(payload.organization, {
             userName: payload.userName,
             userId: payload.userId,
             userEmail: payload.userEmail,
           });
-        } else if (payload.team && payload.organization) {
+        }
+
+        // TEAM invites
+        if (payload.invitedTo === "team" && payload.team) {
+          // You currently don't pass organization with team payloads.
+          // Prevent fall-through to "delete-user".
+          if (!payload.organization) {
+            console.warn("Team invite missing organization; ignoring invite.");
+            return "Invite action ignored";
+          }
           return handleTeamInvite(payload.organization, payload.team, {
             userName: payload.userName,
             userId: payload.userId,
             userEmail: payload.userEmail,
           });
         }
-      case "delete-user":
+
+        // Nothing matched → explicitly return to avoid fall-through
+        return "Invite action ignored";
+      }
+
+      case "delete-user": {
         console.log("Deleting user with ID:", payload.userId);
         return handleDelete({
           userId: payload.userId,
           name: payload.userName,
           email: payload.userEmail,
         });
-      default:
+      }
+
+      default: {
         console.warn("Unknown action:", payload.action);
         return "Unknown action";
+      }
     }
   };
 
-  // 🔁 Now uses the mutation (fires request; returns same string as before)
-  const handleOrgInvite = (
-    organization: OrganizationMembership,
-    invitedUser: { userName: string; userId: number; userEmail: string }
-  ): string => {
-    console.log("Invite action triggered for entities:", organization);
-    inviteToOrg
-      .mutateAsync({
-        organization,
-        invitedUser,
-        auth: { email: user?.email || "", password: user?.password || "" },
-      })
-      .catch(() => {
-        /* handled in onError */
-      });
-    return "Invite action completed";
+// 🔁 Uses the org mutation
+const handleOrgInvite = (
+  organization: OrganizationMembership,
+  invitedUser: { userName: string; userId: number; userEmail: string }
+): string => {
+  inviteToOrg
+    .mutateAsync({
+      organization,
+      invitedUser,
+      auth: { email: user?.email || "", password: user?.password || "" },
+    })
+    .catch(() => {});
+  return "Invite action completed";
+};
+
+// 🔁 Uses the team mutation with your required payload
+const handleTeamInvite = (
+  org: OrganizationMembership,
+  team: TeamMembership,
+  invitedUser: { userName: string; userId: number; userEmail: string }
+): string => {
+  const payload = {
+    email: invitedUser.userEmail,
+    orgRole: org.role ?? "MEMBER",
+    organizationId: org.organizationId,
+    organizationName: org.organization.name,
+    teamRole: team.role ?? "MEMBER",
+    teamId: team.teamId,
+    teamName: team.team?.name ?? "",
+    invitedUserId: invitedUser.userId,
   };
 
-  const handleTeamInvite = (
-    org: OrganizationMembership,
-    team: TeamMembership,
-    invitedUser: { userName: string; userId: number; userEmail: string }
-  ): string => {
-    console.log("Invite action triggered for team:", team);
-    return "Invite action completed";
-  };
+  inviteToTeam
+    .mutateAsync({
+      payload,
+      auth: { email: user?.email || "", password: user?.password || "" },
+    })
+    .catch(() => {});
+  return "Invite action completed";
+};
 
   const handleDelete = (user: any): string => {
     console.log("Delete action triggered for user:", user);

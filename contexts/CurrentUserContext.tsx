@@ -14,7 +14,7 @@ export type OrganizationMembership = {
 export type TeamMembership = {
   teamId: number;
   role?: string | null;
-  team: { name: string };
+  team: { name: string; organizationId: number };
 };
 
 export type CurrentUserMap = {
