@@ -9,6 +9,7 @@ import type { ColumnId } from "@/components/search/SearchBar";
 
 interface Props extends SearchParams {
   extraColumns?: ColumnId[];
+  onRowAction?: (payload: RowActionPayload) => string;
 }
 
 export default function UserListContainer({
@@ -19,6 +20,7 @@ export default function UserListContainer({
   organizationName,
   teamName,
   extraColumns = [],
+  onRowAction,
 }: Props) {
   const params = useMemo(
     () => ({ q, sortBy, order, take, organizationName, teamName }),
@@ -90,7 +92,7 @@ export default function UserListContainer({
       isFetchingNextPage={isFetchingNextPage}
       extraColumns={extraColumns}
       searchParams={params}
-      onRowAction={handleRowAction}
+      onRowAction={onRowAction}
     />
   );
 }

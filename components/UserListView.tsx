@@ -46,26 +46,21 @@ import {
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import InviteToTeam from "./InviteToTeam";
+import {
+  TeamMembership,
+  OrganizationMembership,
+} from "@/contexts/CurrentUserContext";
 
-type RowAction = "delete-user" | "invite-user";
-
+export type RowAction = "delete-user" | "invite-user";
 export type RowActionPayload = {
   action: RowAction;
   userName: string;
   userId: number;
   userEmail: string;
-  userOrgs: Org[];
-  userTeams: Team[];
+  invitedTo: string;
+  team?: TeamMembership;
+  organization?: OrganizationMembership;
 };
-
-type userPayload = {
-  id: number;
-  name: string;
-  email: string;
-  orgs: Org[];
-  teams: Team[];
-};
-
 interface Props {
   users: User[];
   total: number;
@@ -233,19 +228,6 @@ export default function UserListView({
     arr.push(<col key="actions" className={W_ACTION} />);
     return arr;
   }, [showTeam, showTeamRole, showTeamInvite]);
-
-  const handleRowAction = useCallback(
-    (user: userPayload, action: RowAction): void =>
-      onRowAction?.({
-        action,
-        userName: user.name,
-        userEmail: user.email,
-        userId: user.id,
-        userOrgs: user.orgs,
-        userTeams: user.teams,
-      }),
-    [onRowAction]
-  );
 
   if (isLoading) return <div>Loading users...</div>;
   if (error) return <div className="text-red-600">Error: {error.message}</div>;
@@ -445,22 +427,32 @@ export default function UserListView({
 
                     <DropdownMenuContent align="end">
                       <DropdownMenuSub>
-                        <DropdownMenuSubTrigger
-                          onSelect={() => handleRowAction(user, "invite-user")}
-                        >
+                        <DropdownMenuSubTrigger>
                           Invite User
                         </DropdownMenuSubTrigger>
 
                         <DropdownMenuSubContent alignOffset={8}>
-                          {/* Your custom component */}
-                          <InviteToTeam />
+                          <div
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1"
+                          >
+                            <InviteToTeam
+                              userName={user.name}
+                              userEmail={user.email}
+                              userId={user.id}
+                              onRowAction={onRowAction}
+                            />
+                          </div>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
 
                       <DropdownMenuItem
                         variant="destructive"
                         //Never call handler on an event directly, always wrap in another function to avoid immediate call
-                        onSelect={() => handleRowAction(user, "delete-user")}
+                        onSelect={() =>
+                          console.log("Delete user:", user.name, user.email)
+                        }
                       >
                         Delete User
                       </DropdownMenuItem>
