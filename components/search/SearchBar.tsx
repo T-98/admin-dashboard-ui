@@ -35,7 +35,10 @@ type Props = {
   selected: Set<ColumnId>;
   onChange: (next: Set<ColumnId>) => void;
   onQueryChange?: (key: SearchKey) => void;
+  /** debounce for main q */
   debounceMs?: number;
+  /** debounce for org/team filters (defaults to 1000ms per request) */
+  filterDebounceMs?: number;
 };
 
 export default function SearchBar({
@@ -43,77 +46,132 @@ export default function SearchBar({
   onChange,
   onQueryChange,
   debounceMs = 300,
+  filterDebounceMs = 1000, // << 1s for org/team filters
 }: Props) {
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortBy | null>(null);
   const [orgQuery, setOrgQuery] = useState("");
   const [teamQuery, setTeamQuery] = useState("");
 
-  // Debounce for q
+  // Debounced copies
   const [dq, setDq] = useState(q);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dOrg, setDOrg] = useState(orgQuery);
+  const [dTeam, setDTeam] = useState(teamQuery);
 
-  // Use a string signature for dedupe (built URL is perfect)
+  // timers to allow explicit flush (Enter)
+  const qTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const orgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const teamTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // signature to de-dupe emissions
   const lastEmittedRef = useRef<string>("");
 
+  // debounce q
   useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
+    if (qTimerRef.current) clearTimeout(qTimerRef.current);
+    qTimerRef.current = setTimeout(() => {
       setDq(q);
-      timerRef.current = null;
+      qTimerRef.current = null;
     }, debounceMs);
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+      if (qTimerRef.current) {
+        clearTimeout(qTimerRef.current);
+        qTimerRef.current = null;
       }
     };
   }, [q, debounceMs]);
 
+  // debounce org
+  useEffect(() => {
+    if (orgTimerRef.current) clearTimeout(orgTimerRef.current);
+    orgTimerRef.current = setTimeout(() => {
+      setDOrg(orgQuery);
+      orgTimerRef.current = null;
+    }, filterDebounceMs);
+    return () => {
+      if (orgTimerRef.current) {
+        clearTimeout(orgTimerRef.current);
+        orgTimerRef.current = null;
+      }
+    };
+  }, [orgQuery, filterDebounceMs]);
+
+  // debounce team
+  useEffect(() => {
+    if (teamTimerRef.current) clearTimeout(teamTimerRef.current);
+    teamTimerRef.current = setTimeout(() => {
+      setDTeam(teamQuery);
+      teamTimerRef.current = null;
+    }, filterDebounceMs);
+    return () => {
+      if (teamTimerRef.current) {
+        clearTimeout(teamTimerRef.current);
+        teamTimerRef.current = null;
+      }
+    };
+  }, [teamQuery, filterDebounceMs]);
+
+  // Build with *debounced* values
   const builtDebounced = useMemo(
     () =>
       buildUserSearchQueryFromUI({
         q: dq,
         sortBy,
-        organizationName: orgQuery,
-        teamName: teamQuery,
+        organizationName: dOrg,
+        teamName: dTeam,
       }),
-    [dq, sortBy, orgQuery, teamQuery]
+    [dq, dOrg, dTeam, sortBy]
   );
 
-  // Emit debounced key when builtDebounced changes (typing path)
+  // Emit when debounced build changes
   useEffect(() => {
     if (!onQueryChange) return;
-    const sig = builtDebounced.url; // string signature
+    const sig = builtDebounced.url;
     if (sig !== lastEmittedRef.current) {
       lastEmittedRef.current = sig;
-      onQueryChange(builtDebounced.key); // still emit structured key
+      onQueryChange(builtDebounced.key);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [builtDebounced]);
 
-  // Submit handler (Enter): cancel timer, emit raw q immediately, sync dq
+  // Submit (Enter): cancel all timers, sync debounced values, emit immediately
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+
+      if (qTimerRef.current) {
+        clearTimeout(qTimerRef.current);
+        qTimerRef.current = null;
       }
+      if (orgTimerRef.current) {
+        clearTimeout(orgTimerRef.current);
+        orgTimerRef.current = null;
+      }
+      if (teamTimerRef.current) {
+        clearTimeout(teamTimerRef.current);
+        teamTimerRef.current = null;
+      }
+
+      // sync debounced copies to raw values
+      setDq(q);
+      setDOrg(orgQuery);
+      setDTeam(teamQuery);
+
+      // build from raw
       const builtNow = buildUserSearchQueryFromUI({
         q,
         sortBy,
         organizationName: orgQuery,
         teamName: teamQuery,
       });
-      setDq(q);
-      const sig = builtNow.url; // string signature
+
+      const sig = builtNow.url;
       if (sig !== lastEmittedRef.current) {
         lastEmittedRef.current = sig;
         onQueryChange?.(builtNow.key);
       }
     },
-    [q, sortBy, orgQuery, teamQuery, onQueryChange]
+    [q, orgQuery, teamQuery, sortBy, onQueryChange]
   );
 
   const toggle = useCallback(
@@ -149,6 +207,7 @@ export default function SearchBar({
 
         <Sort value={sortBy} onChange={setSortBy} queryHasQ={hasQ} />
 
+        {/* Pass raw values; SearchBar debounces before emitting */}
         <Filter
           orgQuery={orgQuery}
           teamQuery={teamQuery}
@@ -170,7 +229,6 @@ export default function SearchBar({
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-
             <TooltipContent side="top" align="end">
               Toggle Columns
             </TooltipContent>

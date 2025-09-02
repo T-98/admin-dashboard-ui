@@ -269,8 +269,7 @@ const handleTeamInvite = (
             {...searchKey}
             extraColumns={extraColumns}
             onRowAction={handleRowAction}
-          />
-          +{" "}
+          />{" "}
         </CurrentUserProvider>
       </Suspense>
     </>
