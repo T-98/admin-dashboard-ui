@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
 
 type LoginPayload = { email: string; password: string };
 type LoginResponse = { userId: number; name: string; email: string };

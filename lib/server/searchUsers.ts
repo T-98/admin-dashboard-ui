@@ -24,7 +24,7 @@ export async function searchUsersServer(
   if (input.teamName) qs.set("teamName", input.teamName);
   if (input.nextCursor) qs.set("nextCursor", input.nextCursor);
 
-  const base = ENV.API_BASE_URL ?? "http://localhost:3000";
+  const base = ENV.NEXT_PUBLIC_API_BASE;
   const res = await fetch(`${base}/api/users/search?${qs.toString()}`, {
     method: "GET",
     headers: {

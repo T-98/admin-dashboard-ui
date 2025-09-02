@@ -26,7 +26,7 @@ export async function userFetcher(
   if (nextCursor) query.nextCursor = nextCursor;
 
   // Calls Nest directly
-  const base = "http://localhost:3000";
+  const base = process.env.NEXT_PUBLIC_API_BASE;
   const url = `${base}/api/users/search`;
 
   const res = await axios.get<PaginatedResponse>(url, {
