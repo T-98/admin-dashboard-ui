@@ -52,6 +52,7 @@ export default function SearchBar({
   const [sortBy, setSortBy] = useState<SortBy | null>(null);
   const [orgQuery, setOrgQuery] = useState("");
   const [teamQuery, setTeamQuery] = useState("");
+  const [take, setTake] = useState<number>(10);
 
   // Debounced copies
   const [dq, setDq] = useState(q);
@@ -119,8 +120,9 @@ export default function SearchBar({
         sortBy,
         organizationName: dOrg,
         teamName: dTeam,
+        take,
       }),
-    [dq, dOrg, dTeam, sortBy]
+    [dq, dOrg, dTeam, sortBy, take]
   );
 
   // Emit when debounced build changes
@@ -163,6 +165,7 @@ export default function SearchBar({
         sortBy,
         organizationName: orgQuery,
         teamName: teamQuery,
+        take,
       });
 
       const sig = builtNow.url;
@@ -171,7 +174,7 @@ export default function SearchBar({
         onQueryChange?.(builtNow.key);
       }
     },
-    [q, orgQuery, teamQuery, sortBy, onQueryChange]
+    [q, orgQuery, teamQuery, sortBy, take, onQueryChange]
   );
 
   const toggle = useCallback(
@@ -214,6 +217,28 @@ export default function SearchBar({
           onOrgChange={setOrgQuery}
           onTeamChange={setTeamQuery}
         />
+
+        {/* Page size (take) */}
+        <div className="flex items-center gap-2 ml-2">
+          <label htmlFor="take" className="text-sm text-muted-foreground">
+            Page size
+          </label>
+          <Input
+            id="take"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100}
+            className="w-24"
+            value={take}
+            onChange={(e) => {
+              const next = Math.trunc(e.currentTarget.valueAsNumber);
+              if (Number.isNaN(next)) return; // ignore transient NaN
+              const clamped = Math.max(1, Math.min(100, next));
+              setTake(clamped);
+            }}
+          />
+        </div>
 
         <button type="submit" className="hidden" aria-hidden="true" />
       </form>

@@ -11,7 +11,7 @@ export type SearchKey = {
   sortBy?: SortBy; // only present if q is non-empty
   organizationName?: string; // trimmed, optional
   teamName?: string; // trimmed, optional
-  take: number; // always 10
+  take: number; // page size (1-100)
   order: "asc"; // always asc
 };
 
@@ -20,16 +20,22 @@ type BuildInput = {
   sortBy?: SortBy | null;
   organizationName?: string;
   teamName?: string;
+  take?: number; // optional, defaults to 10
 };
 
 export function buildUserSearchQueryFromUI(input: BuildInput) {
   const qTrim = (input.q ?? "").trim();
   const orgTrim = (input.organizationName ?? "").trim();
   const teamTrim = (input.teamName ?? "").trim();
+  // sanitize take
+  const rawTake = typeof input.take === "number" && Number.isFinite(input.take)
+    ? Math.trunc(input.take)
+    : 10;
+  const take = Math.max(1, Math.min(100, rawTake));
 
   // Build the normalized key object (what we’ll feed to React Query + fetcher)
   const key: SearchKey = {
-    take: 10,
+    take,
     order: "asc",
     ...(qTrim ? { q: qTrim } : {}),
     ...(qTrim && input.sortBy ? { sortBy: input.sortBy } : {}),

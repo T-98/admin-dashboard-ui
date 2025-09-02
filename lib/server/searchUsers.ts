@@ -16,7 +16,7 @@ export async function searchUsersServer(
     if (input.sortBy) qs.set("sortBy", input.sortBy);
   }
 
-  qs.set("take", String(input.take)); // always 10 for now
+  qs.set("take", String(input.take));
   qs.set("order", input.order ?? "asc");
 
   if (input.organizationName)
