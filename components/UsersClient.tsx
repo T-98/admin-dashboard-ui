@@ -259,6 +259,7 @@ export default function UsersClient(initial: Props) {
         selected={selected}
         onChange={setSelected}
         onQueryChange={setSearchKey}
+        currentUser={user ? { userId: user.userId, email: user.email, password: user.password } : null}
       />
 
       <Suspense

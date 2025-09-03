@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,10 +19,13 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Columns3Cog } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, Columns3Cog, Inbox, X } from "lucide-react";
 import Filter from "./Filter";
 import { Sort, type SortBy } from "./Sort";
 import { buildUserSearchQueryFromUI, type SearchKey } from "@/lib/search-build";
+import axios from "axios";
+import { toast } from "sonner";
 
 export const COLUMN_OPTIONS = [
   { id: "team", label: "Team" },
@@ -39,6 +43,8 @@ type Props = {
   debounceMs?: number;
   /** debounce for org/team filters (defaults to 1000ms per request) */
   filterDebounceMs?: number;
+  /** current signed-in user (for invites inbox) */
+  currentUser?: { userId: number; email: string; password: string } | null;
 };
 
 export default function SearchBar({
@@ -47,6 +53,7 @@ export default function SearchBar({
   onQueryChange,
   debounceMs = 300,
   filterDebounceMs = 1000, // << 1s for org/team filters
+  currentUser,
 }: Props) {
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortBy | null>(null);
@@ -189,6 +196,109 @@ export default function SearchBar({
   const selectedCount = selected.size;
   const hasQ = q.trim().length > 0;
 
+  // Invites inbox state
+  const [showInvites, setShowInvites] = useState(false);
+  type Invite = {
+    id: number;
+    email: string;
+    orgRole: string | null;
+    teamRole: string | null;
+    status: "PENDING" | "ACCEPTED" | string;
+    createdAt: string;
+    acceptedAt: string | null;
+    invitedUserId: number;
+    organizationId: number | null;
+    organizationName: string | null;
+    teamId: number | null;
+    teamName: string | null;
+  };
+
+  // Fetch current user's invites
+  const userIdForInvites = currentUser?.userId ?? 101;
+  const invitesQuery = useQuery<
+    { invites: Invite[] } | Invite[] | Invite[],
+    Error
+  >({
+    queryKey: ["currentUserInvites", userIdForInvites],
+    queryFn: async () => {
+      const url = `http://localhost:3000/api/invites`;
+      const res = await axios.get(url, {
+        params: { userIds: String(userIdForInvites) },
+        headers: {
+          "x-email": currentUser?.email ?? "",
+          "x-password": currentUser?.password ?? "",
+        },
+        validateStatus: () => true,
+      });
+      if (res.status < 200 || res.status >= 300) {
+        throw new Error(`Failed to load invites (HTTP ${res.status})`);
+      }
+      return res.data as any;
+    },
+    enabled: !!currentUser?.email && !!currentUser?.password,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  });
+
+  // React Query v5: callbacks like onError are not supported on useQuery options
+  useEffect(() => {
+    if (invitesQuery.isError) {
+      const err = invitesQuery.error as unknown;
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      toast.error("Failed to load invites", { description: msg });
+    }
+  }, [invitesQuery.isError, invitesQuery.error]);
+
+  const invites: Invite[] = useMemo(() => {
+    const d = invitesQuery.data as any;
+    // handle shapes: {invites: []} or []
+    if (!d) return [];
+    if (Array.isArray(d)) return d as Invite[];
+    if (Array.isArray(d.invites)) return d.invites as Invite[];
+    return [];
+  }, [invitesQuery.data]);
+
+  const pendingInvites = invites.filter((i) => i.status === "PENDING");
+
+  // Accept invite mutation
+  const acceptInvite = useMutation({
+    mutationKey: ["acceptInvite"],
+    mutationFn: async (invite: Invite) => {
+      const res = await axios.post(
+        `http://localhost:3000/api/invites/accept`,
+        {
+          email: currentUser?.email,
+          inviteId: Number(invite.id),
+        },
+        {
+          headers: {
+            "x-email": currentUser?.email ?? "",
+            "x-password": currentUser?.password ?? "",
+          },
+          validateStatus: () => true,
+        }
+      );
+      if (res.status < 200 || res.status >= 300) {
+        const msg = (res.data as any)?.message || `Failed (HTTP ${res.status})`;
+        throw new Error(msg);
+      }
+      return res.data as any;
+    },
+    onSuccess: (_data, variables) => {
+      // Refresh invites after accept
+      invitesQuery.refetch();
+      const v = variables as any;
+      const desc = v?.teamName
+        ? `Joined Team ${v.teamName} in ${v.organizationName ?? "Organization"}`
+        : `Joined ${v?.organizationName ?? "Organization"}`;
+      toast.success("Invite accepted", { description: desc });
+    },
+    onError: (err: any) => {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      toast.error("Accept failed", { description: msg });
+    },
+  });
+
   return (
     <div className="w-full flex items-center justify-between gap-3 mb-4">
       <form onSubmit={onSubmit} className="flex items-center gap-2 flex-1">
@@ -243,37 +353,174 @@ export default function SearchBar({
         <button type="submit" className="hidden" aria-hidden="true" />
       </form>
 
-      <TooltipProvider delayDuration={150}>
-        <DropdownMenu>
+      <div className="flex items-center gap-2">
+        {/* Invites inbox button */}
+        <TooltipProvider delayDuration={150}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" aria-label="Toggle Columns">
-                  <Columns3Cog className="mr-1 h-4 w-4" />
-                  {selectedCount ? `(${selectedCount})` : ""}
-                </Button>
-              </DropdownMenuTrigger>
+              <Button
+                type="button"
+                variant="outline"
+                aria-label="Open Invites"
+                className="relative"
+                onClick={() => {
+                  setShowInvites(true);
+                  if (invitesQuery.isSuccess && pendingInvites.length === 0) {
+                    toast.info("No pending invites");
+                  }
+                }}
+                disabled={!currentUser}
+                title={
+                  invitesQuery.isLoading ? "Loading invites..." : "Open invites"
+                }
+              >
+                <Inbox className="mr-1 h-4 w-4" />
+                Invites
+                {pendingInvites.length > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="ml-2 h-5 px-1.5 py-0 text-[10px]"
+                    aria-label={`${pendingInvites.length} pending invites`}
+                  >
+                    {pendingInvites.length}
+                  </Badge>
+                )}
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="top" align="end">
-              Toggle Columns
+              View your invites
             </TooltipContent>
           </Tooltip>
+        </TooltipProvider>
 
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {COLUMN_OPTIONS.map((opt) => (
-              <DropdownMenuCheckboxItem
-                key={opt.id}
-                checked={selected.has(opt.id)}
-                onCheckedChange={(checked) => toggle(opt.id, Boolean(checked))}
+        {/* Columns toggle */}
+        <TooltipProvider delayDuration={150}>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" aria-label="Toggle Columns">
+                    <Columns3Cog className="mr-1 h-4 w-4" />
+                    {selectedCount ? `(${selectedCount})` : ""}
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="end">
+                Toggle Columns
+              </TooltipContent>
+            </Tooltip>
+
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {COLUMN_OPTIONS.map((opt) => (
+                <DropdownMenuCheckboxItem
+                  key={opt.id}
+                  checked={selected.has(opt.id)}
+                  onCheckedChange={(checked) =>
+                    toggle(opt.id, Boolean(checked))
+                  }
+                >
+                  {opt.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TooltipProvider>
+      </div>
+
+      {/* Invites modal */}
+      {showInvites && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          onClick={() => setShowInvites(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-lg bg-background p-4 shadow-lg border"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Invites Modal"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-lg font-semibold">Your Invites</h2>
+                <p className="text-xs text-muted-foreground">
+                  {pendingInvites.length} pending
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowInvites(false)}
+                aria-label="Close"
               >
-                {opt.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TooltipProvider>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto space-y-2">
+              {invitesQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : invites.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No invites.</p>
+              ) : (
+                invites.map((invite) => {
+                  const created = invite.createdAt
+                    ? new Date(invite.createdAt).toLocaleString()
+                    : "";
+                  const isPending = invite.status === "PENDING";
+                  return (
+                    <div
+                      key={`invite-${invite.id}-${
+                        invite.organizationId ?? "org"
+                      }-${invite.teamId ?? "team"}`}
+                      className="flex items-center justify-between rounded-md border p-3"
+                    >
+                      <div className="min-w-0">
+                        {invite.teamName ? (
+                          <p className="text-sm font-medium truncate">
+                            Invited to Team <strong>{invite.teamName}</strong> in Organization <strong>
+                              {invite.organizationName ?? "Unknown"}
+                            </strong>
+                          </p>
+                        ) : (
+                          <p className="text-sm font-medium truncate">
+                            Invited to Organization <strong>{invite.organizationName ?? "Unknown"}</strong>
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground truncate">
+                          Role: {invite.teamName ? invite.teamRole ?? "MEMBER" : invite.orgRole ?? "MEMBER"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Created: {created}</p>
+                        {isPending ? (
+                          <Badge variant="destructive" className="mt-1">Pending</Badge>
+                        ) : (
+                          <Badge className="mt-1">{invite.status}</Badge>
+                        )}
+                      </div>
+                      <div className="ml-3 shrink-0">
+                        <Button
+                          size="sm"
+                          onClick={() => acceptInvite.mutate(invite)}
+                          disabled={!isPending || acceptInvite.isPending}
+                        >
+                          {acceptInvite.isPending ? "Accepting…" : "Accept"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {invites.length > 0 && pendingInvites.length === 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                No pending invites.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
