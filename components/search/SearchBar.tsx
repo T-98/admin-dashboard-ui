@@ -20,7 +20,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Columns3Cog, Inbox, X } from "lucide-react";
+import {
+  Search,
+  Columns3Cog,
+  Inbox,
+  X,
+  CircleCheck,
+  Loader,
+  CircleX,
+} from "lucide-react";
 import Filter from "./Filter";
 import { Sort, type SortBy } from "./Sort";
 import { buildUserSearchQueryFromUI, type SearchKey } from "@/lib/search-build";
@@ -480,24 +488,39 @@ export default function SearchBar({
                       <div className="min-w-0">
                         {invite.teamName ? (
                           <p className="text-sm font-medium truncate">
-                            Invited to Team <strong>{invite.teamName}</strong> in Organization <strong>
+                            Invited to Team <strong>{invite.teamName}</strong>{" "}
+                            in Organization{" "}
+                            <strong>
                               {invite.organizationName ?? "Unknown"}
                             </strong>
                           </p>
                         ) : (
                           <p className="text-sm font-medium truncate">
-                            Invited to Organization <strong>{invite.organizationName ?? "Unknown"}</strong>
+                            Invited to Organization{" "}
+                            <strong>
+                              {invite.organizationName ?? "Unknown"}
+                            </strong>
                           </p>
                         )}
                         <p className="text-xs text-muted-foreground truncate">
-                          Role: {invite.teamName ? invite.teamRole ?? "MEMBER" : invite.orgRole ?? "MEMBER"}
+                          Role:{" "}
+                          {invite.teamName
+                            ? invite.teamRole ?? "MEMBER"
+                            : invite.orgRole ?? "MEMBER"}
                         </p>
-                        <p className="text-xs text-muted-foreground">Created: {created}</p>
-                        {isPending ? (
-                          <Badge variant="destructive" className="mt-1">Pending</Badge>
-                        ) : (
-                          <Badge className="mt-1">{invite.status}</Badge>
-                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Created: {created}
+                        </p>
+                        <Badge variant="outline" className="mt-1">
+                          {invite.status === "ACCEPTED" ? (
+                            <CircleCheck color="#00bd1f" />
+                          ) : invite.status === "PENDING" ? (
+                            <Loader color="#d1b202" />
+                          ) : (
+                            <CircleX color="#fa0000" />
+                          )}
+                          {invite.status}
+                        </Badge>
                       </div>
                       <div className="ml-3 shrink-0">
                         <Button
