@@ -1,10 +1,16 @@
 // hooks/user-fetcher.ts
 import axios from "axios";
 import type { PaginatedResponse, SearchParams } from "./usePaginatedUsers";
+import type { CurrentUser } from "@/components/UsersClient";
+
+// Note: If you need auth headers, consider using context or a global state
+// to provide the necessary credentials to the fetcher function.
+// For this example, we'll assume no auth is needed or it's handled globally.
 
 export async function userFetcher(
   params: SearchParams,
-  nextCursor: string | null
+  nextCursor: string | null,
+  currentUser: CurrentUser
 ) {
   const q = (params.q ?? "").trim();
 
@@ -33,10 +39,9 @@ export async function userFetcher(
     params: query,
     headers: {
       // Prefer NEXT_PUBLIC_* if you want to read from env on the client
-      "x-email":
-        process.env.NEXT_PUBLIC_SEARCH_API_EMAIL ?? "janelle12@gmail.com",
+      "x-email": process.env.NEXT_PUBLIC_SEARCH_API_EMAIL ?? currentUser?.email,
       "x-password":
-        process.env.NEXT_PUBLIC_SEARCH_API_PASSWORD ?? "password123",
+        process.env.NEXT_PUBLIC_SEARCH_API_PASSWORD ?? currentUser?.password,
     },
   });
 

@@ -19,19 +19,19 @@ import { toast } from "sonner";
 
 type Props = SearchParams;
 
-export default function UsersClient(initial: Props) {
-  // columns
-  const [selected, setSelected] = useState<Set<ColumnId>>(new Set());
-  const extraColumns = useMemo(() => Array.from(selected), [selected]);
-
   // session user bootstrap
-  type CurrentUser = {
+  export type CurrentUser = {
     userId: number;
     name: string;
     email: string;
     password: string;
   } | null;
 
+export default function UsersClient(initial: Props) {
+  // columns
+  const [selected, setSelected] = useState<Set<ColumnId>>(new Set());
+  const extraColumns = useMemo(() => Array.from(selected), [selected]);
+  // session user state
   const [user, setUser] = useState<CurrentUser>(null);
   const [checked, setChecked] = useState(false);
   const router = useRouter();
@@ -188,46 +188,46 @@ export default function UsersClient(initial: Props) {
     }
   };
 
-// 🔁 Uses the org mutation
-const handleOrgInvite = (
-  organization: OrganizationMembership,
-  invitedUser: { userName: string; userId: number; userEmail: string }
-): string => {
-  inviteToOrg
-    .mutateAsync({
-      organization,
-      invitedUser,
-      auth: { email: user?.email || "", password: user?.password || "" },
-    })
-    .catch(() => {});
-  return "Invite action completed";
-};
-
-// 🔁 Uses the team mutation with your required payload
-const handleTeamInvite = (
-  org: OrganizationMembership,
-  team: TeamMembership,
-  invitedUser: { userName: string; userId: number; userEmail: string }
-): string => {
-  const payload = {
-    email: invitedUser.userEmail,
-    orgRole: org.role ?? "MEMBER",
-    organizationId: org.organizationId,
-    organizationName: org.organization.name,
-    teamRole: team.role ?? "MEMBER",
-    teamId: team.teamId,
-    teamName: team.team?.name ?? "",
-    invitedUserId: invitedUser.userId,
+  // 🔁 Uses the org mutation
+  const handleOrgInvite = (
+    organization: OrganizationMembership,
+    invitedUser: { userName: string; userId: number; userEmail: string }
+  ): string => {
+    inviteToOrg
+      .mutateAsync({
+        organization,
+        invitedUser,
+        auth: { email: user?.email || "", password: user?.password || "" },
+      })
+      .catch(() => {});
+    return "Invite action completed";
   };
 
-  inviteToTeam
-    .mutateAsync({
-      payload,
-      auth: { email: user?.email || "", password: user?.password || "" },
-    })
-    .catch(() => {});
-  return "Invite action completed";
-};
+  // 🔁 Uses the team mutation with your required payload
+  const handleTeamInvite = (
+    org: OrganizationMembership,
+    team: TeamMembership,
+    invitedUser: { userName: string; userId: number; userEmail: string }
+  ): string => {
+    const payload = {
+      email: invitedUser.userEmail,
+      orgRole: org.role ?? "MEMBER",
+      organizationId: org.organizationId,
+      organizationName: org.organization.name,
+      teamRole: team.role ?? "MEMBER",
+      teamId: team.teamId,
+      teamName: team.team?.name ?? "",
+      invitedUserId: invitedUser.userId,
+    };
+
+    inviteToTeam
+      .mutateAsync({
+        payload,
+        auth: { email: user?.email || "", password: user?.password || "" },
+      })
+      .catch(() => {});
+    return "Invite action completed";
+  };
 
   const handleDelete = (user: any): string => {
     console.log("Delete action triggered for user:", user);
@@ -264,11 +264,18 @@ const handleTeamInvite = (
       <Suspense
         fallback={<UserTableSkeleton rows={10} extraColumns={extraColumns} />}
       >
-        <CurrentUserProvider user={{ userId: user.userId, email: user.email }}>
+        <CurrentUserProvider
+          user={{
+            userId: user.userId,
+            email: user.email,
+            password: user.password,
+          }}
+        >
           <UserListContainer
             {...searchKey}
             extraColumns={extraColumns}
             onRowAction={handleRowAction}
+            currentUser={user}
           />{" "}
         </CurrentUserProvider>
       </Suspense>

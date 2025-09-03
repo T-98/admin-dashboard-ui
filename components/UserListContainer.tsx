@@ -6,10 +6,12 @@ import UserListView, { RowActionPayload } from "./UserListView";
 import type { SearchParams } from "@/hooks/usePaginatedUsers";
 import { useUsersInfinite } from "@/hooks/useUsersInfinite";
 import type { ColumnId } from "@/components/search/SearchBar";
+import type { CurrentUser } from "./UsersClient";
 
 interface Props extends SearchParams {
   extraColumns?: ColumnId[];
   onRowAction?: (payload: RowActionPayload) => string;
+  currentUser: CurrentUser;
 }
 
 export default function UserListContainer({
@@ -21,6 +23,7 @@ export default function UserListContainer({
   teamName,
   extraColumns = [],
   onRowAction,
+  currentUser,
 }: Props) {
   const params = useMemo(
     () => ({ q, sortBy, order, take, organizationName, teamName }),
@@ -28,7 +31,7 @@ export default function UserListContainer({
   );
 
   const { data, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useUsersInfinite(params);
+    useUsersInfinite(params, currentUser);
 
   const [pageIndex, setPageIndex] = useState(0);
   useEffect(
