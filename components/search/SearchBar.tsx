@@ -269,6 +269,7 @@ export default function SearchBar({
   const pendingInvites = invites.filter((i) => i.status === "PENDING");
 
   // Accept invite mutation
+  const [acceptingId, setAcceptingId] = useState<number | null>(null);
   const acceptInvite = useMutation({
     mutationKey: ["acceptInvite"],
     mutationFn: async (invite: Invite) => {
@@ -292,6 +293,10 @@ export default function SearchBar({
       }
       return res.data as any;
     },
+    onMutate: (variables) => {
+      // Track which invite is being accepted to localize loading state
+      setAcceptingId((variables as any)?.id ?? null);
+    },
     onSuccess: (_data, variables) => {
       // Refresh invites after accept
       invitesQuery.refetch();
@@ -304,6 +309,9 @@ export default function SearchBar({
     onError: (err: any) => {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       toast.error("Accept failed", { description: msg });
+    },
+    onSettled: () => {
+      setAcceptingId(null);
     },
   });
 
@@ -526,9 +534,9 @@ export default function SearchBar({
                         <Button
                           size="sm"
                           onClick={() => acceptInvite.mutate(invite)}
-                          disabled={!isPending || acceptInvite.isPending}
+                          disabled={!isPending || (acceptingId === invite.id && acceptInvite.isPending)}
                         >
-                          {acceptInvite.isPending ? "Accepting…" : "Accept"}
+                          {acceptingId === invite.id && acceptInvite.isPending ? "Accepting…" : "Accept"}
                         </Button>
                       </div>
                     </div>
