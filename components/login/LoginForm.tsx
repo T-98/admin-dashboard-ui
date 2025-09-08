@@ -38,6 +38,9 @@ export default function LoginForm() {
     onSuccess: (user) => {
       // `user` is the same as `login.data`
       sessionStorage.setItem("currentUser", JSON.stringify(user)); // Very bad practice for production apps! Use cookies or secure storage instead.
+      // Also set a simple cookie that middleware can check server-side
+      // Note: for production, prefer an HttpOnly secure session cookie from the server.
+      document.cookie = `logged_in=true; Path=/; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       router.replace("/users");
     },
   });
