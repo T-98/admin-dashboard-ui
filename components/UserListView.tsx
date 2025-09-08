@@ -50,7 +50,7 @@ import {
   TeamMembership,
   OrganizationMembership,
 } from "@/contexts/CurrentUserContext";
-
+import type { OrgRole } from "./Invite";
 export type RowAction = "delete-user" | "invite-user";
 export type RowActionPayload = {
   action: RowAction;
@@ -441,6 +441,7 @@ export default function UserListView({
                               userName={user.name}
                               userEmail={user.email}
                               userId={user.id}
+                              userOrgs={user.orgs}
                               onRowAction={onRowAction}
                             />
                           </div>

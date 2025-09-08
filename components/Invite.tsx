@@ -7,16 +7,28 @@ import { Label } from "@/components/ui/label";
 import { useCurrentUserContext } from "@/contexts/CurrentUserContext";
 import type { RowActionPayload } from "./UserListView";
 
-type Role = "ADMIN" | "MEMBER";
+export type OrgRole = "ADMIN" | "MEMBER";
+type TeamRole = "LEAD" | "MEMBER";
 
 interface Props {
   userName: string;
   userId: number;
   userEmail: string;
+  userOrgs: Array<{
+    orgId: number;
+    name: string;
+    role: string;
+  }>;
   onRowAction?: (payload: RowActionPayload) => void;
 }
 
-const Invite = ({ userName, userEmail, userId, onRowAction }: Props) => {
+const Invite = ({
+  userName,
+  userEmail,
+  userId,
+  userOrgs,
+  onRowAction,
+}: Props) => {
   const { organizations: invitingUserOrgs, teams: invitingUserTeams } =
     useCurrentUserContext();
 
@@ -27,7 +39,8 @@ const Invite = ({ userName, userEmail, userId, onRowAction }: Props) => {
     return m;
   }, [invitingUserOrgs]);
 
-  const [role, setRole] = useState<Role>("MEMBER");
+  const [orgRole, setOrgRole] = useState<OrgRole>("MEMBER");
+  const [teamRole, setTeamRole] = useState<TeamRole>("MEMBER");
 
   // pending guard (per target)
   const [pending, setPending] = useState<Record<string, boolean>>({});
@@ -61,28 +74,51 @@ const Invite = ({ userName, userEmail, userId, onRowAction }: Props) => {
       setPendingFor(key, false);
     }
   };
-  //TODO: separate org and team radio groups into two sections. Ors can have roles : MEMBER, ADMIN; teams can have roles: MEMBER, LEAD
+  // Org roles: MEMBER, ADMIN; Team roles: MEMBER, LEAD
   return (
     <ScrollArea className="h-72 w-56 rounded-md border">
       <div className="p-3">
-        {/* Role picker */}
+        {/* Organization role picker */}
         <div className="mb-3">
-          <p className="text-xs font-medium mb-2">Assign role</p>
+          <p className="text-xs font-medium mb-2">Organization role</p>
           <RadioGroup
-            value={role}
-            onValueChange={(v) => setRole(v as Role)}
+            value={orgRole}
+            onValueChange={(v) => setOrgRole(v as OrgRole)}
             className="grid grid-cols-2 gap-2"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem id="role-member" value="MEMBER" />
-              <Label htmlFor="role-member" className="text-xs">
+              <RadioGroupItem id="org-role-member" value="MEMBER" />
+              <Label htmlFor="org-role-member" className="text-xs">
                 Member
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem id="role-admin" value="ADMIN" />
-              <Label htmlFor="role-admin" className="text-xs">
+              <RadioGroupItem id="org-role-admin" value="ADMIN" />
+              <Label htmlFor="org-role-admin" className="text-xs">
                 Admin
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {/* Team role picker */}
+        <div className="mb-3">
+          <p className="text-xs font-medium mb-2">Team role</p>
+          <RadioGroup
+            value={teamRole}
+            onValueChange={(v) => setTeamRole(v as TeamRole)}
+            className="grid grid-cols-2 gap-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem id="team-role-member" value="MEMBER" />
+              <Label htmlFor="team-role-member" className="text-xs">
+                Member
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem id="team-role-lead" value="LEAD" />
+              <Label htmlFor="team-role-lead" className="text-xs">
+                Lead
               </Label>
             </div>
           </RadioGroup>
@@ -113,7 +149,7 @@ const Invite = ({ userName, userEmail, userId, onRowAction }: Props) => {
                     invitedTo: "organization",
                     organization: {
                       organizationId: org.organizationId,
-                      role, // role assigned to the invitee
+                      role: orgRole, // org role assigned to the invitee
                       organization: { name: org.organization.name },
                     },
                   });
@@ -152,6 +188,10 @@ const Invite = ({ userName, userEmail, userId, onRowAction }: Props) => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (!org) return; // safety
+                    // Find the invitee's org matching this team's orgId; default to MEMBER if not found
+                    const inviteeOrg = userOrgs.find(
+                      (item) => item.orgId === orgId
+                    );
                     handleInvite(`team:${team.teamId}`, {
                       action: "invite-user",
                       userId,
@@ -161,12 +201,12 @@ const Invite = ({ userName, userEmail, userId, onRowAction }: Props) => {
                       // include BOTH team and organization in payload
                       organization: {
                         organizationId: org.organizationId,
-                        role, // org role for the invitee
+                        role: inviteeOrg?.role ?? "MEMBER", // org role for the invitee (fallback to MEMBER), backend will validate
                         organization: { name: org.organization.name },
                       },
                       team: {
                         teamId: team.teamId,
-                        role, // team role for the invitee
+                        role: teamRole, // team role for the invitee
                         team: { name: team.team.name, organizationId: orgId },
                       },
                     });
