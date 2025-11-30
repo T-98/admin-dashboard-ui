@@ -2,6 +2,7 @@ import { normalizeSearchParams } from "@/lib/normalizeSearchParams";
 import UsersClient from "@/components/UsersClient";
 import { Suspense } from "react";
 import LogoutButton from "@/components/LogoutButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +28,12 @@ export default async function UsersPage({
 
   return (
     <main className="max-w-full mx-auto p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-4">
         <h1 className="text-2xl font-bold">User Directory</h1>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
       </div>
       <Suspense fallback={<p>Loading...</p>}>
         <UsersClient

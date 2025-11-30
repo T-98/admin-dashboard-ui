@@ -14,11 +14,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body className="bg-background text-foreground antialiased">
         <Providers>
-          {children}
-          <ClientToaster />
+          <div className="min-h-screen">
+            {children}
+            <ClientToaster />
+          </div>
         </Providers>
       </body>
     </html>

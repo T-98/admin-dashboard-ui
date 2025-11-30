@@ -1,5 +1,5 @@
 "use client";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 export function ClientToaster() {
   return <Toaster richColors closeButton />;
